@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>十年前与现在 - 单文件版</title>
+    <title>2006年与现在（2026年） - 单文件版</title>
     <style>
       :root {
         --bg: #f3f1ec;
@@ -367,7 +367,7 @@
     <main class="shell">
       <header class="topbar">
         <div>
-          <h1>十年前与现在</h1>
+          <h1>2006年与现在（2026年）</h1>
           <p>单 HTML 版，直接在浏览器里调用 API</p>
         </div>
         <button id="toggleConfig" class="secondary" type="button">配置 Key</button>
@@ -463,7 +463,7 @@
           </div>
           <label>
             补充方向
-            <textarea id="brief" rows="4" placeholder="可以留空，也可以写：老家、奶奶、校门口、十年后独自回来"></textarea>
+            <textarea id="brief" rows="4" placeholder="可以留空，也可以写：老家、奶奶、校门口、二十年后的现在（2026年）独自回来"></textarea>
           </label>
           <div class="field-row">
             <label>
@@ -519,11 +519,11 @@
             <span id="selectedTitle">未选择</span>
           </div>
           <label>
-            十年前提示词
+            2006年提示词
             <textarea id="decadePrompt" rows="8" placeholder="选择一个选题后自动生成，也可以手动编辑"></textarea>
           </label>
           <label>
-            现在提示词
+            现在（2026年）提示词
             <textarea id="nowPrompt" rows="8" placeholder="这里会尽量保持同地点、同视角，只改变时间后的状态"></textarea>
           </label>
           <div class="field-row">
@@ -547,7 +547,7 @@
           </div>
           <div class="button-row">
             <button id="promptButton" class="ghost" type="button">用当前灵感重写提示词</button>
-            <button id="copyPromptButton" class="secondary" type="button">复制提示词</button>
+            <button id="copyPromptButton" class="secondary" type="button">复制竖版合图提示词</button>
             <button id="imageButton" class="primary" type="button">生成两张图片</button>
           </div>
           <div id="imageStatus" class="status"></div>
@@ -570,12 +570,12 @@
           </div>
           <div class="image-grid">
             <figure>
-              <div class="image-box"><img id="decadeImage" alt="十年前图片"></div>
-              <figcaption><span>十年前</span><a id="downloadDecade" class="hidden" download="十年前.png">下载</a></figcaption>
+              <div class="image-box"><img id="decadeImage" alt="2006年图片"></div>
+              <figcaption><span>2006年</span><a id="downloadDecade" class="hidden" download="2006年.png">下载</a></figcaption>
             </figure>
             <figure>
-              <div class="image-box"><img id="nowImage" alt="现在图片"></div>
-              <figcaption><span>现在</span><a id="downloadNow" class="hidden" download="现在.png">下载</a></figcaption>
+              <div class="image-box"><img id="nowImage" alt="现在（2026年）图片"></div>
+              <figcaption><span>现在（2026年）</span><a id="downloadNow" class="hidden" download="现在（2026年）.png">下载</a></figcaption>
             </figure>
           </div>
           <div class="copy-block">
@@ -592,6 +592,7 @@
       const state = {
         config: {},
         ideas: [],
+        ideaHistory: [],
         selectedIdea: null,
         promptPack: null
       };
@@ -611,16 +612,16 @@
       };
 
       const systemPrompt = `你是一个自媒体视觉策划和 AI 生图提示词导演。
-你的任务是围绕“十年前 vs 现在”的时间对照图生成创意、提示词和文案。
-默认优先创作农村房屋、老家院子、灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、老戏台、祠堂门口等农村生活空间和村庄环境变迁类内容。核心不是“过去穷现在富”，而是“以前简陋但有生机，现在更清楚但荒凉空置”。
+你的任务是围绕“2006年 vs 现在（2026年）”的时间对照图生成创意、提示词和文案。
+围绕真实的农村生活、家庭记忆和村庄环境变迁自由创造场景，不要把常见示例当成固定菜单，不要形成固定场景组合或固定输出顺序。核心不是“过去穷现在（2026年）富”，而是“以前简陋但有生机，现在（2026年）更清楚但荒凉空置”。
 风格要求：真实、克制、有生活感，避免空洞鸡汤，避免过度煽情，重点表现房子还在、生活不在了，烟火气消失，人气散了。
 输出必须是严格 JSON，不要 Markdown，不要解释。`;
 
-      const oldPhoneTexture = "旧手机随手拍质感：像普通人用十年前的老安卓手机或早期智能手机随手拍下来的生活照片，不是专业摄影，不要精致构图，不要电影感，不要摆拍。画面轻微失焦，低像素，压缩痕迹明显，暗部有噪点，白平衡不准，略微偏黄或偏绿，边缘有些糊，主体没有完全居中，画面略歪，可能有轻微手抖和运动模糊，边缘可能有遮挡，生活杂物自然入镜，真实、粗糙、自然、不完美。避免专业摄影棚、电影级光影、高级构图、过度清晰、商业广告质感、完美皮肤、精致摆拍、复古海报风。";
+      const oldPhoneTexture = "2006年拍摄设备随手拍质感：像普通人在2006年用老式数码相机、功能手机或早期拍照手机随手拍下来的生活照片，不是专业摄影，不要精致构图，不要电影感，不要摆拍。画面轻微失焦，低像素，压缩痕迹明显，暗部有噪点，白平衡不准，略微偏黄或偏绿，边缘有些糊，主体没有完全居中，画面略歪，可能有轻微手抖和运动模糊，边缘可能有遮挡，生活杂物自然入镜，真实、粗糙、自然、不完美。避免专业摄影棚、电影级光影、高级构图、过度清晰、商业广告质感、完美皮肤、精致摆拍、复古海报风。";
 
-      const currentPhoneTexture = "现在照片质感：清晰一些，但仍然像普通手机随手拍的真实生活照片，不要商业摄影，不要电影感，不要精致摆拍，不要过度修图，保留自然光、真实环境和生活细节。";
+      const currentPhoneTexture = "现在（2026年）照片质感：清晰一些，但仍然像普通手机随手拍的真实生活照片，不要商业摄影，不要电影感，不要精致摆拍，不要过度修图，保留自然光、真实环境和生活细节。";
 
-      const ruralContrastGuide = "农村环境变迁方向：范围可以从老屋院子拓展到灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、村卫生室、老戏台、祠堂门口等农村生活空间，但方向必须仍然是农村和老家记忆。十年前的场景可以简陋、旧、朴素，但必须有人气和生机，比如温暖阳光、扫过的院子、晾衣绳、菜园、门前树、鸡鸭、柴火、炊烟、老人或小孩经过、正在使用的农具、有人打水浇菜、晒粮、聊天、买东西。现在的同一地点照片更清楚，但要呈现空置、荒凉、杂乱、荒废，比如杂草丛生、墙皮脱落、门窗破旧、菜园荒了、晾衣绳空着、压水井生锈、灶台落灰、农具废弃、旧招牌褪色、塑料桶和杂物堆在角落、没有炊烟、没有人、生活气消失。重点表达：以前的简陋是活着的，现在的清楚是空着的。";
+      const ruralContrastGuide = "农村环境变迁方向：请主动创造具体、真实且有辨识度的农村生活空间，不要只从老屋、灶房、水井、晒谷场等常见场景中轮流选择。可以从生产劳动、家庭生活、儿童记忆、节庆习俗、公共空间、手艺营生、季节活动和地方建筑中自由发散。2006年的场景可以简陋、旧、朴素，但必须有人气和生机；现在（2026年）的同一地点照片更清楚，但要呈现空置、荒凉、杂乱、荒废。必须锁定相机位置、透视、院落或道路几何、建筑主体、门窗开口、屋脊轮廓、成熟树主干和电线杆；自行车、盆、篮筐、工具、衣物、动物和零散杂物不是固定参照物，二十年后的现在（2026年）大部分应消失、移位、被替换或明显腐坏。允许瓦片少量缺失或滑落、木门变形、玻璃局部破损，并在墙边、裂缝、门槛和角落形成不规则杂草。重点表达：以前的简陋是活着的，现在（2026年）的清楚是空着的。";
 
       function loadConfig() {
         try {
@@ -678,24 +679,33 @@
       }
 
       function buildTimeEditLockGuide() {
-        return `【图2最高优先级锁定指令】
+        return `【图2最高优先级：结构锁定与二十年变化指令】
 图片2必须以图片1为唯一底图做时间流逝编辑，不要重新设计相似地点。
-先锁定图片1的场景指纹：道路宽度和走向、左右建筑或墙体、树和电线杆位置、固定参照物之间的距离、前景/背景大轮廓、拍摄高度、镜头距离、透视关系和画面歪斜方向。
-必须保持这些不变：固定参照物的位置/数量/外轮廓/相互关系，建筑墙体材质和屋顶形式，门窗位置，道路宽度和走向，树木主干/主分叉/树冠大轮廓，电线杆位置和姿态。
-只允许做表面时间变化：人物和热闹活动消失，物体落灰、褪色、开裂、生锈，路边或裂缝长草，广告纸破损，增加落叶、蛛网、塑料袋、小垃圾，光线变灰白冷清。
-禁止结构变化：不要把宽路改窄路，不要把道路改方向，不要换房子材质，不要换屋顶，不要移动房屋/墙/门窗/树/电线杆，不要把绿树整体换成另一棵枯树，不要新增大型建筑或道路。
-如果后面的图2变化提示词与本锁定指令冲突，必须忽略冲突部分，把它改写成表面荒废效果。`;
+先把图片1中的可见元素分成三类，再执行编辑：
+1. 永久场景锚点：相机位置和高度、镜头距离、裁切、透视和画面歪斜、院落或道路几何、建筑主体、墙体位置、门窗开口、屋脊和屋顶主体轮廓、成熟树主干、电线杆。必须严格对齐，不得移动、缩放或重画。
+2. 可老化结构细节：瓦片、门板、窗玻璃、墙皮、砖缝、围栏和固定灶台。保持所在区域和整体形式，但必须出现合理老化；允许少量瓦片缺失、滑落或破裂，木门变形，局部玻璃破损，墙皮和砖缝开裂。
+3. 临时生活物件：人物、动物、衣物、自行车、板凳、盆、篮筐、花盆、工具、蔬菜、柴火、容器和零散杂物。它们不是场景锚点，不得保持原有数量和精确位置；二十年后的现在（2026年）移除或明显改变其中60%-90%，留下的少数物件必须移位、废弃或明显腐坏。
+表现长期无人维护，而不只是改颜色：在裸露地面的约30%-90%形成不规则杂草，重点生长在墙边、裂缝、门槛和角落；同时加入落叶积土、蛛网、潮斑、褪色和少量风吹垃圾。至少表现3-6种跨材质老化痕迹，其中至少一种是缺瓦、滑瓦、木门变形、玻璃破损或遗留物移位等非表面变化。
+禁止改变永久场景锚点：不要改变道路宽度和方向，不要移动或缩放建筑、墙体、门窗开口、成熟树主干、电线杆和院落边界，不要改变拍摄视角。
+当二十年变化与画面对齐冲突时，优先保留永久场景锚点，但仍必须改变临时生活物件和可老化结构细节。`;
       }
 
       function buildPromptCopyText() {
         const decadePrompt = $("#decadePrompt").value.trim();
         const nowPrompt = $("#nowPrompt").value.trim();
         const lockGuide = buildTimeEditLockGuide();
-        return `请生成一组同一地点的十年前后对比图。
+        return `请生成一张适合手机观看的同一地点2006年至今竖版对比图。
 
-第一步：根据【图1提示词】生成图片1，图片1是十年前的原始现场照片。
+【最高优先级：最终输出与排版】
+最终只输出一张完整的9:16竖版合图，不要输出两张独立图片。
+必须上下拼接，禁止左右拼接：2006年画面放在上半部分，现在（2026年）画面放在下半部分，上下各占约50%，两部分同宽、边缘对齐。
+上下画面必须展示同一地点、相同相机位置和相近裁切，让固定结构能直接上下对照。不要添加大标题、边框、装饰性版式或多余留白。
 
-第二步：请把图片1作为唯一参考图/底图生成图片2。图片2不是重新画一个相似地点，而是在图片1基础上做时间流逝编辑：保留固定结构，只改变岁月造成的新旧、破败、空置和生活痕迹变化。
+第一步：根据【图1提示词】生成图片1，图片1是2006年的原始现场照片。
+
+第二步：请把图片1作为唯一参考图/底图生成图片2。图片2不是重新画一个相似地点，而是在图片1基础上做时间流逝编辑：永久空间结构严格对齐，同时让临时生活物件、植物生长和可老化构件发生合理的二十年变化。
+
+第三步：把图片1放在上方、图片2放在下方，合成为一张9:16竖版图片后再输出。不要左右排列，不要只输出其中一张，也不要分别输出两张。
 
 【图1提示词】
 ${decadePrompt}
@@ -706,7 +716,10 @@ ${lockGuide}
 ${nowPrompt}
 
 【图2最终检查】
-再次确认：图片2必须严格沿用图片1的场景指纹。不要改变道路宽度和走向、建筑/墙体位置、墙体材质、屋顶形式、树木主干和主分叉、电线杆位置、拍摄角度和透视关系。只允许做无人、荒草、落灰、褪色、破损、杂物和灰白光线这些表面时间变化。`;
+再次确认：图片2的相机位置、裁切、透视、道路或院落几何、建筑主体、墙体、门窗开口、屋脊轮廓、成熟树主干和电线杆必须与图片1严格对齐。不要把自行车、盆、篮筐、工具、衣物、动物和零散杂物当作固定参照物；其中60%-90%应消失、移位、被替换或明显腐坏。检查是否有不规则杂草、跨材质老化，以及至少一种非表面变化；不能只做无人、冷色、落灰和褪色。
+
+【输出前最终检查】
+只交付一张9:16竖版图片；2006年在上，现在（2026年）在下；上下各占约一半；绝对禁止左右拼接、横版画布、两张分开输出或遗漏任意一张。`;
       }
 
       async function copyText(text) {
@@ -774,121 +787,34 @@ ${nowPrompt}
         }
       }
 
-      function fallbackIdeas(payload) {
-        const seeds = [
-          {
-            title: "老屋门前的那棵树",
-            story: "十年前老屋门口晒着玉米，鸡鸭在院子里跑；现在树还在，院子却长满荒草。",
-            anchorObject: "门前老树、红砖墙、旧木门",
-            oldLifeDetails: "温暖阳光、晒玉米、鸡鸭、扫过的院子、晾衣绳、老人经过",
-            nowDecayDetails: "荒草、脱落墙皮、破旧木门、空晾衣绳、废弃农具、没有人"
-          },
-          {
-            title: "没人烧火的灶房",
-            story: "十年前灶房冒着烟，院子里有人摘菜做饭；现在灶台落灰，门口堆着破塑料桶。",
-            anchorObject: "柴火灶、土墙、门口台阶",
-            oldLifeDetails: "炊烟、柴火、菜篮、灶台火光、老人弯腰择菜、阳光照进门口",
-            nowDecayDetails: "灶台落灰、蜘蛛网、墙皮开裂、塑料桶、杂草、没有炊烟"
-          },
-          {
-            title: "荒掉的菜园",
-            story: "十年前门前菜园绿油油，家人在院子里浇水；现在菜地荒了，只剩歪倒的竹竿。",
-            anchorObject: "菜园篱笆、压水井、院墙",
-            oldLifeDetails: "绿菜地、浇水的人、竹竿架、鸡鸭、湿润泥土、午后阳光",
-            nowDecayDetails: "杂草没过菜畦、竹竿倒下、压水井生锈、院墙斑驳、塑料袋挂在草里"
-          },
-          {
-            title: "空下来的院子",
-            story: "十年前院子虽然旧，却晾着衣服、摆着饭桌；现在桌子还在，旁边全是落叶和杂物。",
-            anchorObject: "石桌、晾衣绳、堂屋门",
-            oldLifeDetails: "晾晒衣服、饭桌、搪瓷碗、小孩跑过、干净地面、暖阳",
-            nowDecayDetails: "落叶、灰尘、断掉的晾衣绳、堆放杂物、门窗破旧、院子空着"
-          },
-          {
-            title: "村口小路冷清了",
-            story: "十年前村口小路有人骑车经过，门口坐着聊天的老人；现在路更清楚，却没人停留。",
-            anchorObject: "村口老槐树、土路转弯、矮院墙",
-            oldLifeDetails: "骑自行车的人、老人聊天、路边柴堆、鸡鸭、阳光、孩子经过",
-            nowDecayDetails: "路边荒草、空院墙、废弃三轮车、褪色标语、无人经过、冷清"
-          },
-          {
-            title: "旧门槛还在",
-            story: "十年前旧门槛被一家人踩得发亮；现在门槛还在，门锁锈了，院里没人回来。",
-            anchorObject: "旧门槛、木门、门环",
-            oldLifeDetails: "开着的木门、门槛发亮、屋里有人影、饭菜热气、门口鞋子、午后阳光",
-            nowDecayDetails: "锈门锁、木门开裂、门槛落灰、墙角杂草、破鞋和旧盆、没有人影"
-          },
-          {
-            title: "晒谷场没人来了",
-            story: "十年前晒谷场铺满稻谷，竹耙和箩筐来回响；现在水泥地还在，只剩裂缝里的草。",
-            anchorObject: "晒谷场、水泥地裂缝、旧竹耙、稻草垛",
-            oldLifeDetails: "金黄稻谷、竹耙、箩筐、老人翻晒粮食、孩子跑过、午后强光",
-            nowDecayDetails: "空晒谷场、裂缝杂草、倒下的竹耙、散落稻草、褪色塑料布、无人"
-          },
-          {
-            title: "小卖部的门关上了",
-            story: "十年前村口小卖部开着门，门口有人买盐买汽水；现在招牌褪色，柜台后面落满灰。",
-            anchorObject: "村口小卖部、褪色招牌、木柜台、门口台阶",
-            oldLifeDetails: "玻璃汽水瓶、零食罐、老人聊天、孩子买东西、半开的门、暖阳",
-            nowDecayDetails: "卷帘门生锈、招牌褪色、柜台落灰、空货架、门口杂草、没有顾客"
-          },
-          {
-            title: "牛棚空了",
-            story: "十年前牛棚里有草料和低低的声响；现在木栅栏歪着，棚里只剩蛛网和干草。",
-            anchorObject: "牛棚木栅栏、草料槽、土墙、棚门",
-            oldLifeDetails: "草料、木栅栏、有人添草、地上脚印、棚口阳光、农具靠墙",
-            nowDecayDetails: "空草料槽、断木栅栏、蛛网、干草腐烂、墙角杂草、没有牲口"
-          },
-          {
-            title: "老戏台安静了",
-            story: "十年前戏台前摆着板凳，村里人挤在台下看戏；现在台阶还在，墙上的红漆已经掉了。",
-            anchorObject: "老戏台、红漆台柱、台阶、墙上标语",
-            oldLifeDetails: "板凳、看戏的人群、红布、扩音喇叭、傍晚灯光、热闹村口",
-            nowDecayDetails: "空台阶、剥落红漆、褪色标语、断板凳、灰尘、无人停留"
-          }
-        ];
-        return {
-          ideas: seeds.slice(0, Number(payload.count) || 6).map((seed, index) => ({
-            id: `mock-${index + 1}`,
-            ...seed,
-            theme: payload.theme || "农村老屋",
-            emotion: payload.emotion || "怀旧",
-            hook: "房子还在，生活不在了；以前的简陋是活着的，现在的清楚是空着的。"
-          }))
-        };
-      }
-
-      function fallbackPromptPack(idea) {
-        const anchor = idea.anchorObject || "旧木门、红砖墙、门前老树、压水井、柴火灶、晒谷场、旧招牌";
-        const oldLife = idea.oldLifeDetails || "温暖阳光、扫过的院子、晾衣绳、菜园、鸡鸭、炊烟、有人打水浇菜、晒粮、聊天、正在使用的农具";
-        const nowDecay = idea.nowDecayDetails || "荒草、脱落墙皮、破门窗、废弃农具、塑料桶、压水井生锈、灶台落灰、旧招牌褪色、没有人、没有炊烟";
-        return {
-          title: idea.title || "十年前和现在",
-          story: idea.story || "同一个农村生活空间，十年前简陋但有生机，现在清楚却荒凉空置。",
-          ratio: "4:5",
-          decadePrompt: withOldPhoneTexture(`同一个农村生活空间，十年前，固定参照物必须保留：${anchor}。场景可以是老屋院子、灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、老戏台或祠堂门口。地方简陋、朴素、旧，但有人使用、有人打理、有生活气。画面细节包含：${oldLife}。阳光温暖，生活正在发生，烟火气和生机明显。${idea.story || ""}`),
-          nowPrompt: withCurrentPhoneTexture(`同一个农村生活空间，十年后，同样视角，固定参照物必须保留：${anchor}。照片更清楚，但同一地点空置、荒凉、杂乱、荒废，人气消失。画面细节包含：${nowDecay}。没有炊烟，没有人，生活气不见了，重点表现地方还在、日子不在了。保留图1的道路宽度和走向、左右建筑或墙体位置、固定参照物位置、树木主干和主要分叉、电线杆位置、拍摄角度和透视关系；只做表面老化、落灰、杂草、褪色、无人和杂物变化，不要把宽路改窄路，不要改变树形，不要改变墙体材质和屋顶形式。`),
-          caption: "以前这里不算好看，可到处都是日子。\n现在拍得清楚了，却只剩下空下来的地方。",
-          hashtags: ["农村老屋", "老家院子", "十年前和现在", "时过境迁"],
-          quickEdits: ["更荒凉一点", "更有烟火气", "更像同一地点", "旧手机更模糊", "现在更空置"]
-        };
-      }
-
       async function buildIdeas(payload) {
-        if (!state.config.deepseekKey) return fallbackIdeas(payload);
+        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成选题灵感。");
         const count = Math.min(Number(payload.count) || 6, 12);
-        const userPrompt = `请生成 ${count} 个“十年前 vs 现在”的自媒体图片选题，优先围绕农村房屋、老家院子、村庄环境变迁，也可以拓展到灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、村卫生室、老戏台、祠堂门口等农村生活空间。
+        const creativeSeed = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        const recentIdeas = state.ideaHistory.length ? state.ideaHistory.join("\n") : "无，这是本次会话第一次生成。";
+        const userPrompt = `请生成 ${count} 个“2006年 vs 现在（2026年）”的自媒体图片选题。你需要像真正的创意策划一样主动发现具体场景，而不是从常见农村场景列表中逐项选择。
 用户补充：${payload.brief || "无"}
 主题：${payload.theme || "不限"}
 情绪：${payload.emotion || "怀旧、共鸣"}
 目标人群：普通中文自媒体用户
 平台：${payload.platform || "小红书/抖音/视频号"}
+本次创意种子：${creativeSeed}
+
+本次会话最近生成过的选题，禁止重复或轻微改写：
+${recentIdeas}
 
 ${ruralContrastGuide}
 
-选题不要写成过去贫穷、现在富裕，也不要跑到现代城市、商业街、校园都市生活。必须写成：十年前虽然简陋但有人气、有阳光、有烟火气、有生机；现在照片更清楚，但同一农村地点空置、荒凉、杂乱、荒废，生活气消失。
-每个选题必须有一个或多个固定参照物 anchorObject，用于保证两张图像同一个地方，比如旧木门、红砖墙、门前老树、压水井、门槛、石桌、院墙、柴火灶、土墙、菜园篱笆、水缸、晒谷场、稻草垛、农具、旧拖拉机、村口电线杆、旧招牌、公告栏、老戏台台阶。
-nowDecayDetails 只能写表面荒废和生活气消失，不要写会改变空间结构的变化，比如道路变窄、道路改方向、树主干断掉、树形换了、房子换材质、屋顶换形式、电线杆明显倾斜、墙体或门窗位置变化。
+创意多样性是最高优先级要求：
+1. 禁止使用固定的“老屋、灶房、水井、晒谷场、村口小路”组合和顺序，也不要为了凑数量逐项套用常见空间。
+2. 同一批选题的地点功能、生活事件、永久场景锚点和情感触发物必须明显不同，标题与故事不得互为换词改写。
+3. 至少一半选题必须来自不常被首先想到、但在真实农村生活中合理存在的具体空间或活动。由你自行创造，不要复述提示词中的示例。
+4. 每次请求都要根据本次创意种子重新发散；即使主题和补充方向相同，也要产生与最近历史明显不同的新构想。
+5. 先在内部发散至少三倍数量的候选构想，再只输出差异最大、画面感最强的 ${count} 个。
+
+选题不要写成过去贫穷、现在（2026年）富裕，也不要跑到现代城市、商业街、校园都市生活。必须写成：2006年虽然简陋但有人气、有阳光、有烟火气、有生机；现在（2026年）照片更清楚，但同一农村地点空置、荒凉、杂乱、荒废，生活气消失。
+每个选题必须有2-4个永久场景锚点 anchorObject，用于保证两张图像是同一个地方。优先选择建筑主体、墙体位置、门窗开口、道路或院落边界、屋脊轮廓、成熟树主干、电线杆、门口台阶等稳定结构；不要把自行车、盆、篮筐、衣物、动物、工具、稻草垛、旧拖拉机或零散杂物写成永久场景锚点。
+nowDecayDetails 要同时包含临时生活物件的消失或移位、不规则杂草、跨材质老化，以及至少一种有限的非表面变化，例如少量缺瓦或滑瓦、木门变形、局部玻璃破损、遗留物移位。不得改变道路方向、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干或电线杆位置。
 
 JSON 格式：
 {
@@ -896,12 +822,12 @@ JSON 格式：
     {
       "id": "短id",
       "title": "选题标题",
-      "story": "十年前和现在的农村环境对照故事，一句话说清楚",
+      "story": "2006年和现在（2026年）的农村环境对照故事，一句话说清楚",
       "theme": "主题",
       "emotion": "情绪",
-      "anchorObject": "固定参照物，2-4个",
-      "oldLifeDetails": "十年前有生机的细节",
-      "nowDecayDetails": "现在荒废杂乱的细节",
+      "anchorObject": "永久场景锚点，2-4个，不包含可移动生活物件",
+      "oldLifeDetails": "2006年有生机的细节",
+      "nowDecayDetails": "现在（2026年）荒废杂乱的细节",
       "hook": "让人停留的共情点"
     }
   ]
@@ -909,33 +835,36 @@ JSON 格式：
         const text = await callDeepSeek([
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
-        ]);
-        return extractJson(text);
+        ], 1);
+        const data = extractJson(text);
+        const historyEntries = (data.ideas || []).map((idea) => `${idea.title || ""}｜${idea.story || ""}`);
+        state.ideaHistory = [...state.ideaHistory, ...historyEntries].slice(-40);
+        return data;
       }
 
       async function buildPromptPack(idea) {
-        if (!state.config.deepseekKey) return fallbackPromptPack(idea);
+        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成图片提示词。");
         const userPrompt = `把下面选题扩写成一组可直接用于生图的提示词。
 选题标题：${idea.title || ""}
 选题故事：${idea.story || ""}
 共情点：${idea.hook || ""}
-固定参照物：${idea.anchorObject || "旧木门、红砖墙、门前老树、压水井、柴火灶、晒谷场、旧招牌"}
-十年前生机细节：${idea.oldLifeDetails || "温暖阳光、扫过的院子、晾衣绳、菜园、鸡鸭、炊烟、有人打水浇菜、晒粮、聊天、正在使用的农具"}
-现在荒废细节：${idea.nowDecayDetails || "荒草、脱落墙皮、破门窗、废弃农具、塑料桶、压水井生锈、灶台落灰、旧招牌褪色、没有人、没有炊烟"}
+永久场景锚点：${idea.anchorObject || "建筑主体、红砖墙位置、门窗开口、门前老树主干、院落边界"}
+2006年生机细节：${idea.oldLifeDetails || "温暖阳光、扫过的院子、晾衣绳、菜园、鸡鸭、炊烟、有人打水浇菜、晒粮、聊天、正在使用的农具"}
+现在（2026年）荒废细节：${idea.nowDecayDetails || "不规则荒草、脱落墙皮、少量缺瓦或滑瓦、木门变形、废弃物件移位、压水井生锈、灶台落灰、没有人、没有炊烟"}
 平台：${$("#platform").value}
 比例：${$("#ratio").value}
 
 ${ruralContrastGuide}
 
 要求：
-1. “十年前”和“现在”必须像同一农村地点、相近视角。
-2. 两张图必须保留同一个固定参照物。根据选题选择可识别物件，优先从旧木门、红砖墙、门前树、压水井、门槛、石桌、院墙、柴火灶、土墙、菜园篱笆、水缸、晒谷场、稻草垛、农具、旧拖拉机、村口电线杆、旧招牌、公告栏、老戏台台阶中选择，不要每次都写成同一套院门院墙。
-3. 十年前必须是农村生活空间，简陋但有生机：可以是老屋院子、灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、村卫生室、老戏台、祠堂门口。画面要有温暖阳光、被打理过的痕迹、正在使用的物件、有人经过或生活正在发生。必须是普通人旧手机随手拍质感：低像素、轻微失焦、压缩痕迹、暗部噪点、白平衡不准、偏黄或偏绿、主体不居中、画面略歪、轻微手抖、生活杂物入镜。必须明确避免专业摄影、电影感、精致构图、商业广告质感和复古海报风。
-4. 现在更清晰、更现实，但仍然像普通手机随手拍。必须呈现同一农村地点空置、荒凉、杂乱、荒废：可以有荒草丛生、墙皮脱落、门窗破旧、菜园荒了、晾衣绳空着、压水井生锈、灶台落灰、晒谷场空了、农具废弃、旧招牌褪色、塑料桶堆积、没有炊烟、没有人、生活气消失。
-5. nowPrompt 必须像“在图1基础上的编辑说明”，不要像重新生成另一个场景。必须明确保留图1的道路宽度和走向、左右建筑或墙体位置、固定参照物位置、树木主干和主要分叉、电线杆位置、拍摄角度和透视关系。
-6. nowPrompt 只能写表面状态变化和临时元素变化，不要写会改变几何结构的词。禁止写：道路变窄、中间窄窄荒径、路改方向、树枝折断一半、树干断裂、换成另一棵树、电线杆明显倾斜、房屋换成土墙、屋顶换成瓦顶、门窗换位置、墙体重建、左右房屋位置变化。
-7. 如果需要表达荒凉，用这些写法替代结构变化：路边和裂缝长草、路面落叶积灰、树叶变稀疏、树皮粗糙变老、广告纸褪色破损、墙面落灰开裂、屋檐积灰、石墩落灰或被草半遮挡、没有人物和炊烟。
-8. 情绪要克制，不要直接煽情；重点是“房子还在，生活不在了”“以前的简陋是活着的，现在的清楚是空着的”。
+1. “2006年”和“现在（2026年）”必须像同一农村地点、相近视角。
+2. 两张图必须保留同一组永久场景锚点。优先选择相机位置、道路或院落几何、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干、电线杆、门口台阶等稳定结构。自行车、盆、篮筐、衣物、动物、工具、稻草垛、旧拖拉机和零散杂物属于临时生活物件，不能作为必须原样保留的场景锚点。
+3. 2006年必须是农村生活空间，简陋但有生机：可以是老屋院子、灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、村卫生室、老戏台、祠堂门口。画面要有温暖阳光、被打理过的痕迹、正在使用的物件、有人经过或生活正在发生。必须是普通人使用2006年拍摄设备随手拍的质感：低像素、轻微失焦、压缩痕迹、暗部噪点、白平衡不准、偏黄或偏绿、主体不居中、画面略歪、轻微手抖、生活杂物入镜。必须明确避免专业摄影、电影感、精致构图、商业广告质感和复古海报风。
+4. 现在（2026年）更清晰、更现实，但仍然像普通手机随手拍。必须呈现同一农村地点长期空置和无人维护。移除或明显改变图1中60%-90%的临时生活物件；自行车、盆、篮筐、花盆、工具、衣物、动物和零散杂物不得默认原样留在原位置，留下的少数物件必须移位、废弃或明显腐坏。
+5. nowPrompt 必须像“在图1基础上的编辑说明”，不要像重新生成另一个场景。必须明确锁定相机位置、裁切、道路或院落几何、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干、电线杆位置、拍摄角度和透视关系。
+6. nowPrompt 必须允许可老化结构细节发生有限变化：少量瓦片缺失、滑落或破裂，木门变形，局部玻璃破损，墙皮和砖缝开裂。禁止改变建筑主体和空间几何：道路变窄、道路改方向、成熟树主干断裂、换成另一棵树、电线杆明显倾斜、房屋换材质、屋顶换形式、门窗开口换位置、墙体重建、左右房屋位置变化。
+7. nowPrompt 必须给出可检查的二十年变化预算：裸露地面约15%-30%出现不规则杂草，重点位于墙边、裂缝、门槛和角落；加入3-6种跨材质老化痕迹；至少包含一种缺瓦、滑瓦、木门变形、玻璃破损或遗留物移位等非表面变化。不能只写无人、冷色、落灰、褪色和蛛网。
+8. 情绪要克制，不要直接煽情；重点是“房子还在，生活不在了”“以前的简陋是活着的，现在（2026年）的清楚是空着的”。
 9. 不要出现具体名人、商标、真实未授权人物。
 10. 提示词要适合中文图片模型，也要包含摄影/构图/质感指令。
 
@@ -944,8 +873,8 @@ JSON 格式：
   "title": "标题",
   "story": "故事摘要",
   "ratio": "4:5 或 1:1 或 9:16 或 16:9",
-  "decadePrompt": "十年前图片提示词",
-  "nowPrompt": "现在图片提示词",
+  "decadePrompt": "2006年图片提示词",
+  "nowPrompt": "现在（2026年）图片提示词",
   "caption": "自媒体配文，2-4行",
   "hashtags": ["标签1", "标签2"],
   "quickEdits": ["更有年代感", "更像同一地点"]
@@ -1088,7 +1017,7 @@ JSON 格式：
           </defs>
           <rect width="1024" height="1024" fill="url(#bg)"/>
           <rect x="82" y="92" width="860" height="840" rx="18" fill="rgba(255,255,255,.13)" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
-          <text x="112" y="180" fill="#fff" font-size="54" font-family="Arial, sans-serif" font-weight="700">${variant === "old" ? "十年前" : "现在"}</text>
+          <text x="112" y="180" fill="#fff" font-size="54" font-family="Arial, sans-serif" font-weight="700">${variant === "old" ? "2006年" : "现在（2026年）"}</text>
           <text x="112" y="250" fill="rgba(255,255,255,.92)" font-size="34" font-family="Arial, sans-serif">${escapeXml(title || "时间对照图")}</text>
           <foreignObject x="112" y="330" width="800" height="480">
             <div xmlns="http://www.w3.org/1999/xhtml" style="font: 30px/1.45 Arial, sans-serif; color: white; opacity: .9;">${escapeXml(prompt).slice(0, 220)}</div>
@@ -1100,7 +1029,7 @@ JSON 格式：
 
       async function generateImages() {
         const provider = $("#providerSelect").value;
-        const title = $("#selectedTitle").textContent || "十年前和现在";
+        const title = $("#selectedTitle").textContent || "2006年和现在（2026年）";
         const decadePrompt = withOldPhoneTexture($("#decadePrompt").value.trim());
         const lockGuide = buildTimeEditLockGuide();
         const nowPrompt = `${lockGuide}
@@ -1108,7 +1037,7 @@ JSON 格式：
 ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
 
 【图2最终检查】
-再次确认：图片2必须严格沿用图片1的场景指纹。不要改变道路宽度和走向、建筑/墙体位置、墙体材质、屋顶形式、树木主干和主分叉、电线杆位置、拍摄角度和透视关系。只允许做无人、荒草、落灰、褪色、破损、杂物和灰白光线这些表面时间变化。`;
+再次确认：图片2的相机位置、裁切、透视、道路或院落几何、建筑主体、墙体、门窗开口、屋脊轮廓、成熟树主干和电线杆必须与图片1严格对齐。不要把自行车、盆、篮筐、工具、衣物、动物和零散杂物当作固定参照物；其中60%-90%应消失、移位、被替换或明显腐坏。检查是否有不规则杂草、跨材质老化，以及至少一种非表面变化；不能只做无人、冷色、落灰和褪色。`;
         if (!decadePrompt || !nowPrompt.trim()) throw new Error("请先生成或填写两段提示词");
 
         let decadeUrl;
@@ -1157,13 +1086,13 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
       function withOldPhoneTexture(prompt) {
         const text = String(prompt || "").trim();
         if (!text) return oldPhoneTexture;
-        return text.includes("旧手机随手拍质感") ? text : `${text}\n\n${oldPhoneTexture}`;
+        return text.includes("2006年拍摄设备随手拍质感") ? text : `${text}\n\n${oldPhoneTexture}`;
       }
 
       function withCurrentPhoneTexture(prompt) {
         const text = String(prompt || "").trim();
         if (!text) return currentPhoneTexture;
-        return text.includes("现在照片质感") ? text : `${text}\n\n${currentPhoneTexture}`;
+        return text.includes("现在（2026年）照片质感") ? text : `${text}\n\n${currentPhoneTexture}`;
       }
 
       function providerName(provider) {
@@ -1221,7 +1150,7 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
           state.ideas = data.ideas || [];
           state.selectedIdea = null;
           renderIdeas();
-          showStatus("#ideaStatus", state.config.deepseekKey ? "选题已生成。" : "未配置 DeepSeek，已使用本地示例选题。");
+          showStatus("#ideaStatus", "AI 已生成一批新选题，并会在本次会话中避开重复场景。");
         } catch (error) {
           showStatus("#ideaStatus", friendlyError(error), true);
         } finally {
@@ -1232,7 +1161,7 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
       $("#promptButton").addEventListener("click", async () => {
         const idea = state.selectedIdea || {
           title: $("#selectedTitle").textContent,
-          story: $("#brief").value.trim() || "同一个地点，十年前有人陪伴，现在独自重返。",
+          story: $("#brief").value.trim() || "同一个地点，2006年有人陪伴，现在（2026年）独自重返。",
           hook: "时间改变了场景，也改变了站在这里的人。"
         };
         await fillPromptPack(idea);
@@ -1240,12 +1169,12 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
 
       $("#copyPromptButton").addEventListener("click", async () => {
         if (!$("#decadePrompt").value.trim() || !$("#nowPrompt").value.trim()) {
-          showStatus("#imageStatus", "请先填写十年前和现在两段提示词。", true);
+          showStatus("#imageStatus", "请先填写2006年和现在（2026年）两段提示词。", true);
           return;
         }
         try {
           await copyText(buildPromptCopyText());
-          showStatus("#imageStatus", "提示词已复制。");
+          showStatus("#imageStatus", "竖版上下合图提示词已复制。");
         } catch (error) {
           showStatus("#imageStatus", friendlyError(error), true);
         }
@@ -1262,8 +1191,8 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
         $("#downloadNow").classList.add("hidden");
         try {
           const result = await generateImages();
-          setImage("#decadeImage", "#downloadDecade", result.decadeUrl, "十年前.png");
-          setImage("#nowImage", "#downloadNow", result.nowUrl, "现在.png");
+          setImage("#decadeImage", "#downloadDecade", result.decadeUrl, "2006年.png");
+          setImage("#nowImage", "#downloadNow", result.nowUrl, "现在（2026年）.png");
           $("#resultStatus").textContent = `${providerName(result.provider)} 已完成`;
           showStatus("#imageStatus", "图片已生成。");
         } catch (error) {
