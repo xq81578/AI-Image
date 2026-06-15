@@ -236,6 +236,45 @@
         font-size: 12px;
       }
 
+      .title-workshop {
+        margin-top: 16px;
+      }
+
+      .title-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .title-card {
+        display: grid;
+        gap: 8px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfaf8;
+        text-align: left;
+      }
+
+      .title-card:hover {
+        border-color: var(--accent);
+      }
+
+      .title-card strong {
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      .title-card p {
+        color: #50545d;
+        line-height: 1.55;
+      }
+
+      .title-card span {
+        color: var(--warm);
+        font-size: 12px;
+      }
+
       .image-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -355,7 +394,8 @@
         .topbar,
         .field-row,
         .button-row,
-        .image-grid {
+        .image-grid,
+        .title-list {
           display: grid;
           grid-template-columns: 1fr;
           align-items: stretch;
@@ -509,7 +549,10 @@
               <input id="count" type="number" min="1" max="12" value="6">
             </label>
           </div>
-          <button class="primary" type="submit">生成灵感</button>
+          <div class="button-row">
+            <button class="primary" type="submit">生成灵感</button>
+            <button id="titleButton" class="secondary" type="button">生成短视频标题</button>
+          </div>
           <div id="ideaStatus" class="status"></div>
         </form>
 
@@ -554,6 +597,15 @@
         </section>
       </section>
 
+      <section class="panel title-workshop">
+        <div class="panel-title">
+          <h2>短视频标题灵感</h2>
+          <span id="titleCount">0 个 · 点击标题即可复制</span>
+        </div>
+        <div id="titles" class="title-list"></div>
+        <div id="titleStatus" class="status"></div>
+      </section>
+
       <section class="grid bottom-grid">
         <section class="panel">
           <div class="panel-title">
@@ -593,6 +645,8 @@
         config: {},
         ideas: [],
         ideaHistory: [],
+        titles: [],
+        titleHistory: [],
         selectedIdea: null,
         promptPack: null
       };
@@ -848,6 +902,77 @@ JSON 格式：
         return data;
       }
 
+      async function buildVideoTitles(payload) {
+        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成短视频标题。");
+        const count = Math.min(Math.max(Number(payload.count) || 6, 4), 12);
+        const selectedContext = state.selectedIdea
+          ? JSON.stringify({
+              title: state.selectedIdea.title || "",
+              story: state.selectedIdea.story || "",
+              hook: state.selectedIdea.hook || "",
+              oldLifeDetails: state.selectedIdea.oldLifeDetails || "",
+              nowDecayDetails: state.selectedIdea.nowDecayDetails || ""
+            })
+          : "未选择具体选题，请根据用户补充、主题和情绪自由创作。";
+        const recentTitles = state.titleHistory.length
+          ? state.titleHistory.join("\n")
+          : "无，这是本次会话第一次生成。";
+        const creativeSeed = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        const userPrompt = `请为一条中文短视频生成 ${count} 个可直接发布的标题，并为每个标题写一句可承接标题的前三秒开场。
+
+用户补充：${payload.brief || "无"}
+主题：${payload.theme || "不限"}
+情绪：${payload.emotion || "怀旧、遗憾"}
+平台：${payload.platform || "抖音/视频号/小红书"}
+当前已选选题：${selectedContext}
+本次创意种子：${creativeSeed}
+
+本次会话已经生成过的标题，禁止重复、近义改写或只替换一个物件：
+${recentTitles}
+
+目标风格：
+- 像一小段克制的散文，有伤感和余味，但普通人一眼能懂。
+- 可以高雅，但必须落到庸常生活：饭桌、车票、房租、院门、旧衣服、未接电话、空椅子、剩饭、钥匙等真实细节。
+- 最理想的结构是“前半句有诗意或时间感，后半句忽然落到一句大白话”，形成反差。
+- 悲伤来自具体事实和生活细节，不靠堆砌形容词，不故作深沉。
+
+硬性要求：
+1. 标题必须忠于视频内容，不制造视频无法兑现的虚假情节。
+2. 每个标题最好 14-30 个汉字，最多 36 个汉字；不用句号，少用感叹号和省略号。
+3. 每个标题至少包含一个具体生活意象或动作，避免只写抽象的故乡、青春、岁月、遗憾。
+4. 禁止批量套用“后来、原来、直到那天、我愣住了、再也回不去、岁月偷走了”等常见网感句式。
+5. 同一批标题的句式、意象、叙述视角和情绪落点必须明显不同。
+6. 先在内部写出至少三倍数量的候选，再保留最自然、最有画面、最容易让人停留的 ${count} 个。
+7. 风格类型要均衡覆盖：散文余味、烟火落地、反差钩子、直白刺痛。不要全部写成一种腔调。
+8. 前三秒开场必须自然承接标题，用一句口语把观众带进具体场景，不能复述标题。
+
+只输出严格 JSON，不要 Markdown，不要解释：
+{
+  "titles": [
+    {
+      "title": "可直接发布的短视频标题",
+      "style": "散文余味/烟火落地/反差钩子/直白刺痛",
+      "opening": "承接标题的前三秒口语开场",
+      "reason": "这个标题最有效的具体意象或反差，15字以内"
+    }
+  ]
+}`;
+        const text = await callDeepSeek([
+          {
+            role: "system",
+            content: "你是克制、敏锐的中文短视频标题编辑。你擅长把散文感、真实生活和点击欲望放在同一句话里。输出必须是严格 JSON。"
+          },
+          { role: "user", content: userPrompt }
+        ], 1.05);
+        const data = extractJson(text);
+        const titles = Array.isArray(data.titles) ? data.titles.slice(0, count) : [];
+        state.titleHistory = [
+          ...state.titleHistory,
+          ...titles.map((item) => item.title || "").filter(Boolean)
+        ].slice(-60);
+        return { titles };
+      }
+
       async function buildPromptPack(idea) {
         if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成图片提示词。");
         const userPrompt = `把下面选题扩写成一组可直接用于生图的提示词。
@@ -906,6 +1031,32 @@ JSON 格式：
           `;
           button.addEventListener("click", () => selectIdea(idea));
           $("#ideas").append(button);
+        });
+      }
+
+      function renderTitles() {
+        $("#titleCount").textContent = `${state.titles.length} 个 · 点击标题即可复制`;
+        $("#titles").innerHTML = "";
+        state.titles.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = "title-card";
+          button.type = "button";
+          button.title = "点击复制标题";
+          button.innerHTML = `
+            <span>${escapeHtml(item.style || "标题灵感")}</span>
+            <strong>${escapeHtml(item.title || "")}</strong>
+            <p>${escapeHtml(item.opening || "")}</p>
+            <span>${escapeHtml(item.reason || "点击复制标题")}</span>
+          `;
+          button.addEventListener("click", async () => {
+            try {
+              await copyText(item.title || "");
+              showStatus("#titleStatus", `已复制：${item.title || ""}`);
+            } catch (error) {
+              showStatus("#titleStatus", friendlyError(error), true);
+            }
+          });
+          $("#titles").append(button);
         });
       }
 
@@ -1159,6 +1310,30 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
           showStatus("#ideaStatus", "AI 已生成一批新选题，并会在本次会话中避开重复场景。");
         } catch (error) {
           showStatus("#ideaStatus", friendlyError(error), true);
+        } finally {
+          setBusy(button, false);
+        }
+      });
+
+      $("#titleButton").addEventListener("click", async () => {
+        const button = $("#titleButton");
+        setBusy(button, true, "生成标题中");
+        showStatus("#titleStatus", "正在打磨标题和前三秒开场...");
+        try {
+          const data = await buildVideoTitles({
+            brief: $("#brief").value.trim(),
+            theme: $("#theme").value,
+            emotion: $("#emotion").value,
+            platform: $("#platform").value,
+            count: $("#count").value
+          });
+          state.titles = data.titles || [];
+          renderTitles();
+          showStatus("#titleStatus", state.titles.length
+            ? "标题已生成。点击任意标题即可复制，再次生成会避开本次会话中已有的标题。"
+            : "模型没有返回标题，请再试一次。", !state.titles.length);
+        } catch (error) {
+          showStatus("#titleStatus", friendlyError(error), true);
         } finally {
           setBusy(button, false);
         }
