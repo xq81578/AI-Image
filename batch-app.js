@@ -156,7 +156,7 @@
       const width=ctx.measureText(text).width;ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect((1080-width)/2-14,y-8,width+28,size+20);
       ctx.textAlign='center';ctx.textBaseline='top';ctx.lineJoin='round';ctx.lineWidth=4;ctx.strokeStyle='#000';ctx.strokeText(text,540,y);ctx.fillStyle='#fff';ctx.fillText(text,540,y);
     }
-    label(`${job.span}年前 · ${job.oldYear}年`,960-16-64);label(`${job.span}年后 · ${job.newYear}年`,960+24);
+    label(`${job.oldYear}年`,960-16-64);label(`${job.newYear}年`,960+24);
     return blobDataUrl(await canvasBlob(canvas));
   }
   function fileName(job) {
