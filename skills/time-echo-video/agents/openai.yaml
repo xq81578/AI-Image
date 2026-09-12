@@ -1,0 +1,4 @@
+interface:
+  display_name: "时光对照视频"
+  short_description: "用 Codex 内置生图、逐张视觉审核和自动返工生成怀旧对照配乐视频"
+  default_prompt: "使用 $time-echo-video 自动完成一条时光对照视频，恢复未完成批次，审核通过后配乐出片。"

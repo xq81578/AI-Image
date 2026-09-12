@@ -4,3 +4,4 @@ __pycache__/
 /.video-cache/
 /tools/
 /bgm/*
+/outputs/codex-time-echo/
