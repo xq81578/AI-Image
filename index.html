@@ -3,527 +3,91 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>2000年前后旧照片与现在（2026年） - 单文件版</title>
+    <title>时光对照 · 创作工作台</title>
     <style>
-      :root {
-        --bg: #f3f1ec;
-        --panel: #ffffff;
-        --text: #1e2024;
-        --muted: #6b6f78;
-        --line: #d9d4ca;
-        --accent: #245f64;
-        --accent-dark: #18484d;
-        --warm: #ad7440;
-        --danger: #9b3b2f;
-        --shadow: 0 16px 42px rgba(31, 35, 39, 0.12);
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        min-width: 320px;
-        color: var(--text);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.2)), var(--bg);
-        font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
-      }
-
-      button,
-      input,
-      select,
-      textarea {
-        font: inherit;
-      }
-
-      button {
-        border: 0;
-        cursor: pointer;
-      }
-
-      textarea,
-      input,
-      select {
-        width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fbfaf8;
-        color: var(--text);
-        outline: none;
-      }
-
-      textarea,
-      input {
-        padding: 11px 12px;
-      }
-
-      select {
-        padding: 10px 12px;
-      }
-
-      textarea:focus,
-      input:focus,
-      select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(36, 95, 100, 0.13);
-      }
-
-      h1,
-      h2,
-      h3,
-      p {
-        margin: 0;
-      }
-
-      h1 {
-        font-size: 30px;
-        line-height: 1.15;
-      }
-
-      h2 {
-        font-size: 18px;
-      }
-
-      h3 {
-        font-size: 16px;
-      }
-
-      label {
-        display: grid;
-        gap: 7px;
-        margin-bottom: 13px;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .shell {
-        max-width: 1440px;
-        margin: 0 auto;
-        padding: 24px;
-      }
-
-      .topbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
-      }
-
-      .version-badge {
-        display: inline-flex;
-        align-items: center;
-        min-height: 24px;
-        margin-top: 8px;
-        padding: 3px 9px;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        background: #fbfaf8;
-        color: var(--accent-dark);
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .topbar p,
-      .panel-title span,
-      figcaption,
-      .hint {
-        color: var(--muted);
-      }
-
-      .topbar p {
-        margin-top: 5px;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
-        gap: 16px;
-        align-items: start;
-      }
-
-      .bottom-grid {
-        margin-top: 16px;
-      }
-
-      .panel {
-        background: var(--panel);
-        border: 1px solid rgba(30, 32, 36, 0.08);
-        border-radius: 8px;
-        padding: 18px;
-        box-shadow: var(--shadow);
-      }
-
-      .panel-title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 16px;
-      }
-
-      .field-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 12px;
-      }
-
-      .primary,
-      .secondary,
-      .ghost {
-        min-height: 42px;
-        border-radius: 8px;
-        padding: 0 16px;
-        font-weight: 700;
-      }
-
-      .primary {
-        width: 100%;
-        background: var(--accent);
-        color: white;
-      }
-
-      .primary:hover {
-        background: var(--accent-dark);
-      }
-
-      .primary:disabled,
-      .secondary:disabled,
-      .ghost:disabled {
-        cursor: not-allowed;
-        opacity: 0.62;
-      }
-
-      .secondary {
-        background: #ffffff;
-        border: 1px solid var(--line);
-        color: var(--text);
-      }
-
-      .ghost {
-        background: #f6f3ed;
-        border: 1px solid transparent;
-        color: var(--accent-dark);
-      }
-
-      .button-row {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .idea-list {
-        display: grid;
-        gap: 10px;
-        max-height: 560px;
-        overflow: auto;
-        padding-right: 4px;
-      }
-
-      .idea-card {
-        display: grid;
-        gap: 8px;
-        padding: 13px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fbfaf8;
-        text-align: left;
-      }
-
-      .idea-card:hover,
-      .idea-card.active {
-        border-color: var(--accent);
-      }
-
-      .idea-card strong {
-        font-size: 15px;
-      }
-
-      .idea-card p {
-        color: #50545d;
-        line-height: 1.55;
-      }
-
-      .idea-card span {
-        color: var(--warm);
-        font-size: 12px;
-      }
-
-      .title-workshop {
-        margin-top: 16px;
-      }
-
-      .title-list {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .title-card {
-        display: grid;
-        gap: 8px;
-        padding: 13px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fbfaf8;
-        text-align: left;
-      }
-
-      .title-card:hover {
-        border-color: var(--accent);
-      }
-
-      .title-card strong {
-        font-size: 16px;
-        line-height: 1.55;
-      }
-
-      .title-card p {
-        color: #50545d;
-        line-height: 1.55;
-      }
-
-      .title-card span {
-        color: var(--warm);
-        font-size: 12px;
-      }
-
-      .image-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 14px;
-      }
-
-      figure {
-        margin: 0;
-      }
-
-      .image-box {
-        display: grid;
-        place-items: center;
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #ebe7de;
-        overflow: hidden;
-      }
-
-      .image-box::before {
-        content: "等待图片";
-        color: var(--muted);
-      }
-
-      .image-box:has(img[src])::before {
-        content: "";
-      }
-
-      .image-box img {
-        display: none;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .image-box img[src] {
-        display: block;
-      }
-
-      figcaption {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        margin-top: 8px;
-        font-size: 13px;
-      }
-
-      figcaption a {
-        color: var(--accent-dark);
-        font-weight: 700;
-        text-decoration: none;
-      }
-
-      .copy-block {
-        margin-top: 16px;
-      }
-
-      .copy-block h3 {
-        margin-bottom: 10px;
-      }
-
-      .status {
-        min-height: 20px;
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .status.error {
-        color: var(--danger);
-      }
-
-      details {
-        margin-top: 12px;
-      }
-
-      summary {
-        cursor: pointer;
-        color: var(--accent-dark);
-        font-weight: 700;
-      }
-
-      .config-grid {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--line);
-      }
-
-      .notice {
-        margin-bottom: 14px;
-        padding: 10px 12px;
-        border: 1px solid #dfc8b8;
-        border-radius: 8px;
-        background: #fff7ef;
-        color: #744830;
-        line-height: 1.55;
-        font-size: 13px;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      @media (max-width: 980px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      @media (max-width: 640px) {
-        .shell {
-          padding: 14px;
-        }
-
-        .topbar,
-        .field-row,
-        .button-row,
-        .image-grid,
-        .title-list {
-          display: grid;
-          grid-template-columns: 1fr;
-          align-items: stretch;
-        }
-      }
+    :root{--bg:#f5f6f3;--paper:#fff;--ink:#263732;--sub:#7b8580;--line:#e4e9e4;--green:#285e4c;--pale:#eef5ef;--orange:#be7a32;--red:#b35348}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 "Microsoft YaHei","PingFang SC",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit}button:disabled{cursor:default;opacity:.45}button:focus-visible,a:focus-visible{outline:3px solid #99c7ae;outline-offset:3px}button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px}button:hover:not(:disabled){border-color:#92ac9d}h1,h2,h3,p{margin:0}h1{font-size:20px;letter-spacing:1px}h2{font-size:16px}h3{font-size:13px}small,.muted{color:var(--sub)}small{font-size:11px}input,select,textarea{min-width:0;width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 10px;background:#fafbf9;color:var(--ink);outline:none}input:focus,select:focus,textarea:focus{border-color:var(--green)}textarea{resize:vertical;line-height:1.8}label{display:block;color:#77827b;font-size:11px}label input,label textarea,label select{display:block;margin-top:6px;font-size:12px}.primary{background:var(--green);border-color:var(--green);color:#fff}.primary:hover:not(:disabled){background:#204e3e;border-color:#204e3e}.quiet{border:0;background:transparent;color:var(--green);padding:3px;font-size:11px}.tag{display:inline-flex;align-items:center;border-radius:5px;background:#f0f3ef;color:#748079;padding:3px 6px;font-size:10px}.tag.green{background:#eaf3ec;color:var(--green)}
+    .app{max-width:1760px;margin:auto;padding:0 28px;height:100dvh;min-height:690px;display:flex;flex-direction:column}.header{height:81px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:12px;align-items:center}.logo{width:38px;height:38px;background:var(--green);color:#e4ebce;border-radius:11px;display:grid;place-items:center;font-family:Georgia,serif;font-size:23px}.brand p{font-size:10px;color:var(--sub);letter-spacing:2px;margin-top:2px}.header-right{display:flex;align-items:center;gap:18px}.model-summary{font-size:11px;color:var(--sub)}.model-summary b{color:#53665a;font-weight:500}.demo-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 0 16px;gap:12px}.demo-caption{font-size:11px;color:var(--sub)}.demo-caption b{font-weight:500;color:var(--green);margin-right:8px}.segmented{display:flex;gap:3px;background:#e9ede7;border-radius:7px;padding:3px}.segmented button{font-size:11px;padding:5px 11px;background:transparent;border:0;border-radius:5px;color:#758077}.segmented button.active{background:#fff;color:var(--green);box-shadow:0 1px 3px #26373213}
+    .journey{display:grid;grid-template-columns:repeat(4,1fr);padding:19px 22px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:20px;flex-shrink:0}.journey-step{display:flex;align-items:center;gap:11px;position:relative;min-width:0}.journey-step:not(:last-child):after{content:"";height:1px;background:var(--line);width:20%;margin-left:auto;margin-right:22px}.step-disc{height:31px;width:31px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:#a0aaa2;font:12px Georgia,serif;flex-shrink:0}.journey-step.done .step-disc{background:var(--pale);border-color:var(--pale);color:var(--green)}.journey-step.running .step-disc{border:2px solid var(--green);color:var(--green);box-shadow:0 0 0 4px #eef5ef}.journey-step.error .step-disc{color:var(--red);border-color:var(--red)}.journey-step h3{font-weight:500}.journey-step small{display:block;font-size:10px;margin-top:3px}.journey-step.running small{color:var(--green)}.journey-step.error small{color:var(--red)}
+    .workspace{display:grid;grid-template-columns:.85fr 1fr 1.08fr 1.34fr;gap:14px;min-height:0;flex:1}.stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}.stage.active-stage{border-color:#9eb8a6;box-shadow:0 3px 15px #285e4c07}.stage-head{padding:17px 16px 14px;border-bottom:1px solid #f0f2ed;display:flex;align-items:center;justify-content:space-between;gap:5px}.stage-title{display:flex;gap:8px;align-items:baseline}.stage-num{font:italic 14px Georgia,serif;color:#aab6ab}.stage-title h2{font-size:14px;white-space:nowrap}.stage-head .tag{font-size:9px}.stage-body{padding:16px;flex:1;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#d5dfd5 transparent}.stage-foot{border-top:1px solid #f0f2ed;padding:12px 16px;flex-shrink:0}.stage-foot button{width:100%;font-size:12px}.foot-note{font-size:10px;color:var(--sub);text-align:center;margin-top:7px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;margin-top:16px}.direction textarea{height:100px;min-height:70px;resize:none}.hint-box{font-size:11px;color:#90988e;border-left:2px solid #dfe7d9;padding-left:10px;margin-top:22px;line-height:1.9}.mini-heading{font-size:10px;letter-spacing:1px;color:var(--sub);display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}.idea-list{display:grid;gap:8px}.idea{width:100%;text-align:left;padding:11px 10px;display:flex;gap:9px;border-color:#e9ede7;border-radius:8px}.idea.selected{background:#f1f6ef;border-color:#8ba88c}.idea-no{color:#9ba799;font:italic 11px Georgia,serif;padding-top:2px}.idea h3{font-size:12px;font-weight:500}.idea p{font-size:10px;color:#8b9288;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:4px}.idea-text{min-width:0;flex:1}.idea-check{font-size:12px;color:var(--green)}.suggestion{font-size:10px;color:#8e988e;line-height:1.8;margin-top:15px}.prompt-card{border:1px solid var(--line);padding:12px;border-radius:8px;margin-bottom:11px;text-align:left;width:100%;display:block}.prompt-top{display:flex;align-items:center;justify-content:space-between;gap:5px}.prompt-card p{font-size:11px;color:#7c887c;line-height:1.9;margin:10px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.prompt-card .expand{font-size:10px;color:#929c92}.prompt-dot{height:6px;width:6px;border-radius:50%;background:#b79770;display:inline-block;margin-right:5px}.prompt-dot.now{background:#75967d}.lock-note{color:#6c8674;font-size:10px;margin:13px 0}.image-options{display:grid;grid-template-columns:1fr 72px;gap:8px;margin-top:16px}.image-options select{font-size:10px;padding:8px 5px}.run-box{background:#f1f5ee;border:1px solid #e1eadd;border-radius:8px;padding:12px;margin-bottom:14px}.run-line{display:flex;align-items:center;gap:8px;font-size:11px}.run-line b{margin-left:auto;font:12px Consolas,monospace;white-space:nowrap}.spinner{display:inline-block;width:16px;height:16px;border:2px solid #d3dfd1;border-top-color:var(--green);border-right-color:var(--green);border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0}.run-box p{font-size:10px;color:#809078;margin-top:8px}.image-pair{display:grid;grid-template-columns:1fr 1fr;gap:9px}.photo{padding:0;border:0;background:transparent;text-align:left;min-width:0}.photo-surface{display:block;aspect-ratio:4/5;background:#f1f2ed;border-radius:7px;position:relative;overflow:hidden}.photo-surface svg{width:100%;height:100%;object-fit:cover;display:block}.photo-label{position:absolute;top:7px;left:7px;border-radius:3px;background:#ffffffd9;padding:2px 5px;font-size:9px;color:#697261}.zoom-mark{position:absolute;right:7px;bottom:7px;background:#ffffffd9;padding:2px 5px;border-radius:4px;font-size:10px}.photo-meta{display:flex;justify-content:space-between;gap:4px;font-size:10px;margin-top:7px;color:#6e7f71}.photo-meta small{font:9px Consolas,monospace}.waiting-photo{height:100%;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8c9b84;gap:10px;background:linear-gradient(110deg,#eef1e9 20%,#f8faf4 40%,#eef1e9 60%);background-size:250% 100%;animation:shimmer 3s infinite}.waiting-photo .spinner{height:23px;width:23px}.waiting-photo span{font-size:10px}.caption-box{margin-top:18px;padding-top:13px;border-top:1px solid var(--line)}.caption-box p{font-size:11px;color:#75816f;line-height:1.9;margin-top:7px}.result-status{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:14px;color:var(--green)}.empty{height:100%;min-height:140px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:12px;color:#a0a99d}.empty .empty-icon{border:1px dashed #d1dbcb;border-radius:12px;width:43px;height:43px;display:grid;place-items:center;font:italic 19px Georgia,serif}.empty p{font-size:11px;line-height:1.9}.error-box{background:#fbf1ef;border-color:#eed8d1}.error-box .run-line{color:var(--red)}.error-box p{color:#a2786a}.error-box button{font-size:10px;padding:5px 8px;margin-top:10px;color:var(--red);border-color:#e7c5ba}.footer{height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8d978b}.footer strong{font-weight:500;color:var(--green);margin-left:5px}.footer .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#8fa383;margin-right:6px}.stage-body .loading-placeholder{border-radius:7px;height:65px;margin-bottom:10px;background:linear-gradient(100deg,#edf1e9 20%,#fafbf8 40%,#edf1e9 60%);background-size:250% 100%;animation:shimmer 2s infinite}
+    dialog{border:1px solid var(--line);border-radius:14px;padding:0;width:min(760px,calc(100vw - 40px));max-height:90dvh;color:var(--ink);box-shadow:0 20px 90px #24392b30}dialog::backdrop{background:#1c2f2555;backdrop-filter:blur(4px)}.modal-head{padding:19px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.modal-head p{font-size:11px;color:var(--sub);margin-top:4px}.close{padding:2px 8px;border:0;font-size:23px;background:transparent;color:#7b8878}.modal-body{padding:22px 24px}.modal-body textarea{height:160px;margin-bottom:16px;resize:vertical}.modal-body label{margin-bottom:9px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}.large-art{max-height:60dvh;aspect-ratio:4/5;margin:auto}.large-art svg{width:100%;height:100%;border-radius:7px}.modal-tabs{display:flex;gap:8px;margin-bottom:16px}.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}.config-grid h3{margin-bottom:18px}.config-note{font-size:11px;color:var(--sub);margin-top:16px}.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#294b3c;color:white;border-radius:8px;padding:10px 20px;font-size:12px;z-index:10;box-shadow:0 5px 20px #294b3c22}.hidden{display:none!important}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{to{background-position:-150% 0}}
+    @media(min-width:1101px) and (max-height:850px){.header{height:66px}.demo-bar{padding:5px 0 12px}.journey{padding:14px 20px;margin-bottom:15px}.stage-head{padding:14px}.stage-body{padding:14px}.stage-foot{padding:10px 14px}.stage-foot button{padding:8px}.foot-note{margin-top:5px;font-size:9px}.idea{padding:8px 9px}.idea h3{font-size:11px}.idea p{font-size:9px;margin-top:2px}.idea-list{gap:6px}.mini-heading{margin-bottom:9px}.suggestion{margin-top:10px;line-height:1.7}.prompt-card{padding:10px;margin-bottom:9px}.prompt-card p{-webkit-line-clamp:2;margin:7px 0;line-height:1.7}.lock-note{margin:6px 0}.image-options{margin-top:6px}.photo-surface{height:167px;aspect-ratio:auto}.run-box{padding:10px;margin-bottom:11px}.caption-box{margin-top:13px;padding-top:11px}.direction textarea{height:90px}.fields{gap:12px 10px;margin-top:14px}.hint-box{margin-top:18px}.footer{height:38px}}
+    .idea:disabled,.photo:disabled{opacity:1}.idea:disabled{cursor:default}.stage-foot .primary:disabled{opacity:.65}
+    @media(min-width:1550px){.stage-body{padding:20px}.stage-head{padding:20px}.idea{padding:15px 12px}.idea h3{font-size:13px}.idea p{font-size:11px}.prompt-card{padding:16px}.prompt-card p{font-size:12px;-webkit-line-clamp:4}.photo-surface{max-height:290px}.direction textarea{height:130px}}
+    @media(max-height:730px) and (min-width:1101px){.app{min-height:640px}.header{height:65px}.journey{padding:13px 18px;margin-bottom:14px}.demo-bar{padding-bottom:12px}.stage-head{padding:12px 14px}.stage-body{padding:12px}.idea{padding:8px}.hint-box{margin-top:13px}.direction textarea{height:76px}.prompt-card{padding:9px}.prompt-card p{-webkit-line-clamp:2}.image-options{margin-top:9px}.caption-box{margin-top:12px}.run-box{padding:9px}.footer{height:35px}}
+    @media(max-width:1100px){.app{height:auto;min-height:100dvh;padding:0 18px}.workspace{grid-template-columns:1fr 1fr;align-items:stretch}.stage{min-height:440px}.stage-body{overflow:visible}.journey-step:not(:last-child):after{display:none}.header-right .model-summary{display:none}.photo-surface{max-height:230px}.footer{margin-top:8px}}
+    @media(max-width:600px){.app{padding:0 12px}.header{height:76px}.brand p{font-size:9px;letter-spacing:1px}h1{font-size:17px}.header-right button{font-size:11px;padding:7px}.workspace{grid-template-columns:1fr}.journey{padding:14px 9px;gap:5px}.journey-step{gap:5px;align-items:flex-start}.step-disc{width:21px;height:21px;font-size:9px}.journey-step h3{font-size:10px}.journey-step small{font-size:8px}.demo-bar{align-items:flex-start;flex-direction:column}.stage{min-height:0}.stage-body{min-height:200px}.photo-surface{max-height:unset}.footer{font-size:9px;gap:12px}.config-grid{grid-template-columns:1fr}.modal-head,.modal-body{padding:16px}.footer span:last-child{white-space:nowrap}}
+    .idea h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mini-heading{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media(min-width:1101px) and (max-height:850px){.stage-body{padding:12px}.idea{padding:7px 9px}.prompt-card p{line-height:1.6}.image-options{margin-top:4px}.prompt-card{margin-bottom:7px}}
+    @media(min-width:1101px) and (max-height:730px){.header{height:55px}.journey{padding:9px 18px}.idea{padding:6px 8px}.photo-surface{height:140px}.caption-box p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.prompt-card{padding:8px}.prompt-card p{margin:5px 0}.run-box p{margin-top:5px}.image-options select{padding:6px 4px}}
+    /* 操作区独立于提示词预览，紧凑窗口下也无需滚动查找按钮。 */
+    #promptsBody.has-prompts{display:grid;grid-template-rows:repeat(2,minmax(0,160px));gap:10px;overflow:hidden}
+    #promptsBody.has-prompts .prompt-card{display:flex;flex-direction:column;min-height:0;margin:0;padding:12px;overflow:hidden}
+    #promptsBody .prompt-top,#promptsBody .expand{flex-shrink:0}
+    #promptsBody .prompt-card p{flex:0 0 auto;max-height:54px;-webkit-line-clamp:3;margin:8px 0;line-height:18px}
+    #promptsBody .expand{align-self:flex-end;color:var(--green);margin-top:auto}
+    #promptControls{margin-bottom:12px}
+    #promptControls .image-options{margin:0;grid-template-columns:minmax(0,1fr) 64px}
+    #promptControls .prompt-actions{display:flex;justify-content:space-between;gap:8px;margin-top:10px}
+    #promptControls .prompt-actions button{width:auto;padding:3px 0;font-size:10px;white-space:nowrap}
+    #detailSubtitle:empty{display:none}
+    @media(min-width:1101px) and (max-height:730px){#promptsBody.has-prompts{gap:8px}#promptsBody.has-prompts .prompt-card{padding:9px}#promptsBody .prompt-card p{-webkit-line-clamp:2;max-height:36px;margin:5px 0}#promptControls{margin-bottom:9px}}
+    @media(max-width:1100px){#promptsBody.has-prompts{grid-template-rows:repeat(2,125px)}}
+    @media(prefers-reduced-motion:reduce){*,*:before{animation-duration:0.01ms!important;animation-iteration-count:1!important}}
+        .config-heading { margin-bottom: 20px; }
+      .config-heading p { margin-top: 6px; font-size: 13px; }
+      .model-config-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+      .model-config-card { min-width: 0; padding: 22px; border: 1px solid var(--line); border-radius: 10px; }
+      .model-config-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+      .model-config-heading p { color: var(--muted); font-size: 13px; margin-top: 5px; line-height: 1.6; }
+      .model-step { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px; background: #edf4f3; color: var(--accent); font-size: 13px; font-weight: 700; }
+      .model-config-card label { margin-bottom: 16px; }
+      .model-config-card .hint { font-size: 12px; line-height: 1.7; }
+      .config-advanced { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 14px; }
+      .config-advanced summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+      .config-advanced[open] summary { margin-bottom: 16px; }
+      .config-advanced label { margin-bottom: 0; }
+      .mock-config-note { background: #f7f8f6; padding: 24px; border-radius: 8px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+      .mock-config-note strong { display: block; margin-bottom: 8px; color: var(--text); }
+      .config-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; }
+      .config-footer .hint { font-size: 12px; line-height: 1.7; }
+      .config-actions { display: flex; gap: 10px; flex-shrink: 0; }
+      .config-actions .primary { width: auto; min-width: 130px; }
+      #keyStatus { font-size: 12px; text-align: right; line-height: 1.6; }
+      @media (max-width: 760px) {
+        .model-config-grid { grid-template-columns: 1fr; }
+        .model-config-card { padding: 18px; }
+        .config-footer { flex-direction: column; align-items: stretch; }
+        .config-actions { justify-content: flex-end; }
+      }
+
+
+      :root{--muted:var(--sub);--accent:var(--green);--accent-dark:var(--green);--text:var(--ink);--danger:var(--red)}
+      .header{flex-shrink:0}.journey{margin-top:6px}figure{margin:0;min-width:0}a{color:var(--green);text-decoration:none}.hint{color:var(--sub)}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .status:empty{display:none}.status{font-size:11px;overflow-wrap:anywhere;color:var(--green);margin-bottom:12px}.status.error{color:var(--red);border:1px solid #ead2cb;background:#fbf2ef;border-radius:8px;padding:9px;max-height:95px;overflow:auto}.status.loading{background:#f0f5ec;border:1px solid #e0e9da;border-radius:8px;padding:11px}.status .run-line span{min-width:0}.status .run-line b{font-variant-numeric:tabular-nums}.stage-body[aria-busy="true"] .idea-list{opacity:.5}
+      .idea-list{max-height:none}.idea-card{display:flex;flex-direction:column;gap:3px;text-align:left;padding:9px 10px;border:1px solid var(--line);width:100%;min-width:0}.idea-card.active{background:var(--pale);border-color:#91ae98}.idea-card strong{font-size:12px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}.idea-card p{font-size:10px;color:var(--sub);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}.idea-card:disabled{opacity:1}.idea-tools{display:flex;justify-content:space-between;gap:10px;margin-top:12px}.title-list{display:grid;gap:10px;margin-top:14px}.title-card{text-align:left;display:grid;gap:6px;padding:14px}.title-card span,.title-card p{font-size:12px;color:var(--sub)}
+      .prompt-content{display:flex;flex-direction:column;flex:1;min-height:0}.prompt-content>#promptStatus:not(:empty){margin:10px 12px 0;flex-shrink:0}.prompt-content #promptsBody{flex:1}.prompt-content #promptsBody.has-prompts{grid-template-rows:repeat(2,minmax(0,160px))}.prompt-content #promptsBody .prompt-card p{flex:0 1 auto;min-height:0}.prompt-content #promptsBody .prompt-card{position:relative}.prompt-content[aria-busy="true"] .prompt-card{background:linear-gradient(110deg,#eef3e9 20%,#fafcf7 40%,#eef3e9 60%);background-size:250% 100%;animation:shimmer 3s infinite}
+      .photo{width:100%}.photo-surface img{display:none;width:100%;height:100%;object-fit:contain}.photo-surface img[src]{display:block}.photo-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;color:var(--sub)}.photo-surface:has(img[src]) .photo-placeholder{display:none}.photo-surface:not(:has(img[src])) .zoom-mark{display:none}.photo-surface.working{background:linear-gradient(110deg,#edf2e7 20%,#f9fbf4 40%,#edf2e7 60%);background-size:250% 100%;animation:shimmer 3s infinite}figcaption{display:flex;justify-content:space-between;gap:4px;font-size:10px;margin-top:7px;color:var(--sub)}.caption-box p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}.retry-button{font-size:11px;margin-top:12px;color:var(--red);border-color:#e3c7bf}.photo-enlarged{display:block;width:100%;max-height:68dvh;object-fit:contain}.detail-copy{white-space:pre-wrap;line-height:1.9;margin-top:12px}
+      #configPanel{width:min(940px,calc(100vw - 32px));margin:auto}#configPanel .config-heading{display:none}.config-footer{gap:12px}.model-config-heading p{display:none}.model-config-heading{margin-bottom:16px}.config-advanced summary{cursor:pointer}.config-actions .primary{padding:10px 16px}#editorText{height:45dvh;min-height:160px}.stage-foot button{min-height:36px}#promptControls .prompt-actions button{min-height:25px}
+      @media(min-width:1101px) and (max-height:850px){.idea-card{padding:8px 9px}.idea-card strong{font-size:11px}.idea-card p{font-size:9px}.status{margin-bottom:10px}.photo-surface{height:167px}.prompt-content #promptsBody.has-prompts{gap:9px}}
+      @media(min-width:1101px) and (max-height:700px){.prompt-content #promptsBody.has-prompts{gap:6px}.prompt-content #promptsBody .prompt-card{padding:8px}.prompt-content #promptsBody .prompt-card p{-webkit-line-clamp:2;max-height:36px;margin:4px 0}.prompt-content #promptsBody .prompt-top h3{font-size:12px}.prompt-content #promptsBody .expand{font-size:9px}}
+      @media(max-width:1100px){.prompt-content{flex:none}.prompt-content #promptsBody.has-prompts{grid-template-rows:repeat(2,130px)}.header{gap:12px}#keyStatus{display:none}.stage{min-height:0}.stage-body{min-height:230px}.prompt-content .stage-body{min-height:0}}
+
+      .export-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.export-actions a{border:1px solid var(--line);border-radius:8px;padding:8px 12px}
     </style>
   </head>
+
   <body>
-    <main class="shell">
-      <header class="topbar">
-        <div>
-          <h1>2000年前后旧照片与现在（2026年）</h1>
-          <p>单 HTML 版，直接在浏览器里调用 API</p>
-          <span class="version-badge">v2026.06.22-旧照破防标题版</span>
-        </div>
-        <button id="toggleConfig" class="secondary" type="button">配置 Key</button>
-      </header>
-
-      <section id="configPanel" class="panel hidden">
-        <div class="notice">
-          单文件版会把 Key 保存在当前浏览器的 localStorage，只适合自己本地使用。某些 API 可能因为 CORS 不允许浏览器直连，遇到这种情况再加一个很薄的代理即可。
-        </div>
-        <div class="field-row">
-          <label>
-            DeepSeek API Key
-            <input id="deepseekKey" type="password" autocomplete="off" placeholder="sk-...">
-          </label>
-          <label>
-            DeepSeek 模型
-            <input id="deepseekModel" type="text" value="deepseek-chat">
-          </label>
-        </div>
-        <label>
-          DeepSeek Base URL
-          <input id="deepseekBaseUrl" type="text" value="https://api.deepseek.com">
-        </label>
-        <div class="field-row">
-          <label>
-            OpenAI API Key
-            <input id="openaiKey" type="password" autocomplete="off" placeholder="sk-...">
-          </label>
-          <label>
-            OpenAI 图片模型
-            <input id="openaiModel" type="text" value="gpt-image-2">
-          </label>
-        </div>
-        <div class="field-row">
-          <label>
-            OpenAI 尺寸
-            <select id="openaiSize">
-              <option>1024x1024</option>
-              <option>1024x1536</option>
-              <option>1536x1024</option>
-            </select>
-          </label>
-          <label>
-            OpenAI 质量
-            <select id="openaiQuality">
-              <option>medium</option>
-              <option>low</option>
-              <option>high</option>
-            </select>
-          </label>
-        </div>
-        <div class="field-row">
-          <label>
-            Gemini API Key
-            <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
-          </label>
-          <label>
-            Gemini 图片模型
-            <input id="geminiModel" type="text" value="gemini-2.5-flash-image">
-          </label>
-        </div>
-        <div class="field-row">
-          <label>
-            Gemini 比例
-            <select id="geminiAspectRatio">
-              <option>1:1</option>
-              <option>4:5</option>
-              <option>9:16</option>
-              <option>16:9</option>
-            </select>
-          </label>
-          <label>
-            默认图片模型
-            <select id="defaultProvider">
-              <option value="mock">Mock 流程预览</option>
-              <option value="openai">OpenAI gpt-image</option>
-              <option value="gemini">Gemini Nano Banana</option>
-            </select>
-          </label>
-        </div>
-        <div class="button-row">
-          <button id="saveConfig" class="primary" type="button">保存配置</button>
-          <button id="clearConfig" class="ghost" type="button">清空本地配置</button>
-        </div>
-        <div id="configStatus" class="status"></div>
-      </section>
-
-      <section class="grid">
-        <form id="ideaForm" class="panel">
-          <div class="panel-title">
-            <h2>AI 生成选题灵感</h2>
-            <span id="keyStatus">未读取配置</span>
-          </div>
-          <label>
-            补充方向
-            <textarea id="brief" rows="4" placeholder="可以留空，也可以写：老家、奶奶、校门口、二十年后的现在（2026年）独自回来"></textarea>
-          </label>
-          <div class="field-row">
-            <label>
-              主题
-              <select id="theme">
+    <main class="app">
+      <header class="header"><div class="brand"><div class="logo">↔</div><h1>时光对照</h1></div><div class="header-right"><span id="keyStatus" class="model-summary"></span><button id="toggleConfig" type="button">⚙ 模型配置</button></div></header>
+      <nav class="journey" aria-label="创作流程">
+        <div class="journey-step done"><span class="step-disc">01</span><div><h3>创作方向</h3><small>2000 年前后 → 2026 年</small></div></div>
+        <div class="journey-step" data-step="ideas"><span class="step-disc">02</span><div><h3>选择灵感</h3><small>待开始</small></div></div>
+        <div class="journey-step" data-step="prompts"><span class="step-disc">03</span><div><h3>确认提示词</h3><small>待开始</small></div></div>
+        <div class="journey-step" data-step="images"><span class="step-disc">04</span><div><h3>对照成片</h3><small>待开始</small></div></div>
+      </nav>
+      <section class="workspace">
+        <form id="ideaForm" class="stage direction"><header class="stage-head"><div class="stage-title"><span class="stage-num">01</span><h2>创作方向</h2></div></header><div class="stage-body"><label>补充方向<textarea id="brief" rows="4" placeholder="写一个地点或一段回忆"></textarea></label><div class="fields"><label>主题<select id="theme">
                 <option>农村老屋</option>
                 <option>老家院子</option>
                 <option>村庄变迁</option>
@@ -535,124 +99,188 @@
                 <option>宠物</option>
                 <option>城市变迁</option>
                 <option>老物件</option>
-              </select>
-            </label>
-            <label>
-              情绪
-              <select id="emotion">
+              </select></label><label>情绪<select id="emotion">
                 <option>怀旧</option>
                 <option>温暖</option>
                 <option>遗憾</option>
                 <option>治愈</option>
                 <option>孤独</option>
                 <option>释然</option>
-              </select>
-            </label>
-          </div>
-          <div class="field-row">
-            <label>
-              平台
-              <select id="platform">
+              </select></label><label>平台<select id="platform">
                 <option>小红书</option>
                 <option>抖音</option>
                 <option>视频号</option>
                 <option>公众号</option>
-              </select>
-            </label>
-            <label>
-              数量
-              <input id="count" type="number" min="1" max="12" value="6">
-            </label>
-          </div>
-          <div class="button-row">
-            <button class="primary" type="submit">生成灵感</button>
-            <button id="titleButton" class="secondary" type="button">生成短视频标题</button>
-          </div>
-          <div id="ideaStatus" class="status"></div>
-        </form>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h2>当前提示词</h2>
-            <span id="selectedTitle">未选择</span>
-          </div>
-          <label>
-            2000年前后旧照片提示词
-            <textarea id="decadePrompt" rows="8" placeholder="选择一个选题后自动生成，也可以手动编辑"></textarea>
-          </label>
-          <label>
-            现在（2026年）同地点提示词
-            <textarea id="nowPrompt" rows="8" placeholder="这里会尽量保持同地点、同视角，只改变时间后的状态"></textarea>
-          </label>
-          <div class="field-row">
-            <label>
-              图片模型
-              <select id="providerSelect">
+              </select></label><label>数量<input id="count" type="number" min="1" max="12" value="6"></label></div></div><footer class="stage-foot"><button id="ideaButton" class="primary" type="submit">生成灵感 →</button></footer></form>
+        <section class="stage" id="ideasStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">02</span><h2>选择灵感</h2></div><span class="tag" id="ideaCount">0 个</span></header><div class="stage-body"><div id="ideaStatus" class="status" role="status" aria-live="polite"></div><div id="ideas" class="idea-list"><div class="empty"><span class="empty-icon">02</span><p>等待生成灵感</p></div></div><div class="idea-tools"><button type="button" id="ideaDetailButton" class="quiet" disabled>灵感详情 ↗</button><button type="button" id="openTitles" class="quiet">短视频标题 ↗</button></div></div><footer class="stage-foot"><button id="generatePromptButton" type="button" class="primary" disabled>生成作图提示词 →</button></footer></section>
+        <section class="stage" id="promptsStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">03</span><h2>确认提示词</h2></div><span class="tag" id="promptBadge">待生成</span></header><div class="prompt-content"><div id="promptStatus" class="status" role="status" aria-live="polite"></div><div class="stage-body has-prompts" id="promptsBody"><button type="button" class="prompt-card" data-editor="decadePrompt"><div class="prompt-top"><h3><i class="prompt-dot"></i>2000 年前后</h3><span class="tag">旧照</span></div><p id="decadePreview">等待生成提示词</p><span class="expand">编辑 ↗</span></button><button type="button" class="prompt-card" data-editor="nowPrompt"><div class="prompt-top"><h3><i class="prompt-dot now"></i>2026 年</h3><span class="tag green">现在</span></div><p id="nowPreview">等待生成提示词</p><span class="expand">编辑 ↗</span></button></div></div><footer class="stage-foot"><div id="promptControls"><div class="image-options"><label>生图模型<select id="providerSelect">
                 <option value="mock">Mock 流程预览</option>
+                <option value="beihai">北海 AI · GPT Image 2</option>
                 <option value="openai">OpenAI gpt-image</option>
                 <option value="gemini">Gemini Nano Banana</option>
-              </select>
-            </label>
-            <label>
-              比例
-              <select id="ratio">
+              </select></label><label>比例<select id="ratio">
                 <option>4:5</option>
                 <option>1:1</option>
                 <option>9:16</option>
                 <option>16:9</option>
+              </select></label></div><div class="prompt-actions"><button id="promptButton" type="button" class="quiet" disabled>↻ 重写提示词</button><button id="copyPromptButton" type="button" class="quiet" disabled>复制合图提示词</button></div></div><button id="imageButton" type="button" class="primary" disabled>生成两张对照图 →</button></footer></section>
+        <section class="stage" id="imagesStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">04</span><h2>对照成片</h2></div><span class="tag" id="resultStatus">待生成</span></header><div class="stage-body"><div id="imageStatus" class="status" role="status" aria-live="polite"></div><div class="image-pair"><figure><button type="button" class="photo" data-photo="decadeImage" aria-label="放大旧照片" disabled><span class="photo-surface"><img id="decadeImage" alt="2000年前后旧照片"><span class="photo-placeholder" id="decadePlaceholder">等待生成</span><span class="photo-label">2000 年前后</span><span class="zoom-mark">↗</span></span></button><figcaption><span id="decadeTime">旧照</span><a id="downloadDecade" class="hidden" download="旧照片.png">下载</a></figcaption></figure><figure><button type="button" class="photo" data-photo="nowImage" aria-label="放大现在照片" disabled><span class="photo-surface"><img id="nowImage" alt="2026年现在照片"><span class="photo-placeholder" id="nowPlaceholder">等待旧照</span><span class="photo-label">2026 年</span><span class="zoom-mark">↗</span></span></button><figcaption><span id="nowTime">现在</span><a id="downloadNow" class="hidden" download="现在照片.png">下载</a></figcaption></figure></div><button id="retryImageButton" type="button" class="hidden retry-button">重试第二张 →</button><div class="caption-box"><div class="prompt-top"><h3>配文</h3><button type="button" class="quiet" data-editor="caption">编辑 ↗</button></div><p id="captionPreview">暂无配文</p></div></div><footer class="stage-foot"><button id="exportButton" type="button" disabled>下载作品</button></footer></section>
+      </section>
+      <footer class="footer"><span><i class="dot"></i><span id="globalStatus">待开始</span></span><span>累计耗时 <strong id="totalTime">00:00</strong></span></footer>
+    </main>
+          <dialog id="configPanel"><header class="modal-head"><h2>模型配置</h2><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body">
+
+        <div class="model-config-grid">
+          <section class="model-config-card" aria-labelledby="textConfigTitle">
+            <div class="model-config-heading">
+              <span class="model-step">01</span>
+              <div><h3 id="textConfigTitle">文本模型</h3><p>生成选题、标题、提示词和配文</p></div>
+            </div>
+            <label>选择服务
+              <select id="textProvider">
+                <option value="deepseek">DeepSeek</option>
+                <option value="beihai">北海 AI</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Gemini</option>
               </select>
             </label>
-          </div>
-          <div class="button-row">
-            <button id="promptButton" class="ghost" type="button">用当前灵感重写提示词</button>
-            <button id="copyPromptButton" class="secondary" type="button">复制竖版合图提示词</button>
-            <button id="imageButton" class="primary" type="button">生成两张图片</button>
-          </div>
-          <div id="imageStatus" class="status"></div>
-        </section>
-      </section>
-
-      <section class="panel title-workshop">
-        <div class="panel-title">
-          <h2>短视频标题灵感</h2>
-          <span id="titleCount">0 个 · 点击标题即可复制</span>
+            <div data-text-provider="deepseek">
+              <label>API Key<input id="deepseekKey" type="password" autocomplete="off" placeholder="sk-..."></label>
+              <label>模型名称
+                <select id="deepseekModel" data-model-select>
+                  <option value="deepseek-chat">deepseek-chat（原有配置）</option>
+                  <option value="deepseek-flash">DeepSeek Flash</option>
+                  <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+              </label>
+              <details class="config-advanced">
+                <summary>高级设置</summary>
+                <label>接口地址（Base URL）<input id="deepseekBaseUrl" type="url" value="https://api.deepseek.com"></label>
+              </details>
+            </div>
+            <div data-text-provider="beihai" class="hidden">
+              <label>API Key<input id="beihaiKey" type="password" autocomplete="off" placeholder="填写 CC Switch 中北海 AI 的 Key"></label>
+              <label>模型名称
+                <select id="beihaiModel" data-model-select>
+                  <option value="gpt-5.5">gpt-5.5</option>
+                  <option value="gpt-5.6-luna">gpt-5.6-luna</option>
+                  <option value="gpt-5.6-sol">gpt-5.6-sol</option>
+                  <option value="gpt-5.6-terra">gpt-5.6-terra</option>
+                  <option value="gpt-6-astra">gpt-6-astra</option>
+                </select>
+              </label>
+              <p class="hint">已按 CC Switch 的北海配置预设地址与模型。</p>
+              <details class="config-advanced">
+                <summary>高级设置 · 接口与推理强度</summary>
+                <label>接口地址（Base URL）<input id="beihaiBaseUrl" type="url" value="https://api.bhbtc.xyz/v1"></label>
+                <div class="field-row" style="margin-top: 16px">
+                  <label>接口协议<select id="beihaiApi"><option value="responses">Responses</option></select></label>
+                  <label>推理强度<select id="beihaiReasoningEffort"><option value="high">高（high）</option><option value="medium">中（medium）</option><option value="low">低（low）</option></select></label>
+                </div>
+              </details>
+            </div>
+            <div data-text-provider="openai" class="hidden">
+              <label>API Key<input id="openaiTextKey" type="password" autocomplete="off" placeholder="留空则使用生图的 OpenAI Key"></label>
+              <label>模型名称
+                <select id="openaiTextModel" data-model-select>
+                  <option value="gpt-4.1-mini">GPT-4.1 mini</option>
+                  <option value="gpt-4.1">GPT-4.1</option>
+                </select>
+              </label>
+              <p class="hint">文本与生图可使用同一个 OpenAI Key。</p>
+            </div>
+            <div data-text-provider="gemini" class="hidden">
+              <label>API Key<input id="geminiTextKey" type="password" autocomplete="off" placeholder="留空则使用生图的 Gemini Key"></label>
+              <label>模型名称
+                <select id="geminiTextModel" data-model-select>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                </select>
+              </label>
+              <p class="hint">文本与生图可使用同一个 Gemini Key。</p>
+            </div>
+          </section>
+          <section class="model-config-card" aria-labelledby="imageConfigTitle">
+            <div class="model-config-heading">
+              <span class="model-step">02</span>
+              <div><h3 id="imageConfigTitle">生图模型</h3><p>生成旧照片与现在的同地点照片</p></div>
+            </div>
+            <label>选择服务
+              <select id="defaultProvider">
+                <option value="mock">Mock 流程预览</option>
+                <option value="beihai">北海 AI · GPT Image 2</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </label>
+            <div data-image-provider="mock" class="mock-config-note">
+              <strong>先预览，再生图</strong>
+              <p>无需生图 Key，使用示意图预览流程。生成真实照片请选择北海 AI、OpenAI 或 Gemini。</p>
+            </div>
+            <div data-image-provider="beihai" class="hidden">
+              <label>API Key<input id="beihaiImageKey" type="password" autocomplete="off" placeholder="留空则使用文本模型的北海 Key"></label>
+              <label>模型名称
+                <select id="beihaiImageModel" data-model-select>
+                  <option value="gpt-image-2">GPT Image 2</option>
+                </select>
+              </label>
+              <p class="hint">与北海文本模型共用 Key，也可以单独填写生图 Key。</p>
+              <details class="config-advanced">
+                <summary>高级设置 · 接口、尺寸与质量</summary>
+                <label>接口地址（Base URL）<input id="beihaiImageBaseUrl" type="url" value="https://api.bhbtc.xyz/v1"></label>
+                <div class="field-row" style="margin-top: 16px">
+                  <label>图片尺寸<select id="beihaiImageSize"><option>1024x1024</option><option>1024x1536</option><option>1536x1024</option></select></label>
+                  <label>图片质量<select id="beihaiImageQuality"><option value="medium">标准</option><option value="low">低</option><option value="high">高</option></select></label>
+                </div>
+              </details>
+            </div>
+            <div data-image-provider="openai" class="hidden">
+              <label>API Key<input id="openaiKey" type="password" autocomplete="off" placeholder="sk-..."></label>
+              <label>模型名称
+                <select id="openaiModel" data-model-select>
+                  <option value="gpt-image-2">GPT Image 2</option>
+                  <option value="gpt-image-1.5">GPT Image 1.5</option>
+                </select>
+              </label>
+              <details class="config-advanced">
+                <summary>高级设置 · 尺寸与质量</summary>
+                <div class="field-row">
+                  <label>图片尺寸<select id="openaiSize"><option>1024x1024</option><option>1024x1536</option><option>1536x1024</option></select></label>
+                  <label>图片质量<select id="openaiQuality"><option value="medium">标准</option><option value="low">低</option><option value="high">高</option></select></label>
+                </div>
+              </details>
+            </div>
+            <div data-image-provider="gemini" class="hidden">
+              <label>API Key<input id="geminiKey" type="password" autocomplete="off" placeholder="AIza..."></label>
+              <label>模型名称
+                <select id="geminiModel" data-model-select>
+                  <option value="gemini-2.5-flash-image">Nano Banana · Gemini 2.5 Flash Image</option>
+                  <option value="gemini-3.1-flash-image">Nano Banana 2 · Gemini 3.1 Flash Image</option>
+                  <option value="gemini-3-pro-image">Nano Banana Pro · Gemini 3 Pro Image</option>
+                </select>
+              </label>
+              <details class="config-advanced">
+                <summary>高级设置 · 图片比例</summary>
+                <label>图片比例<select id="geminiAspectRatio"><option>1:1</option><option>4:5</option><option>9:16</option><option>16:9</option></select></label>
+              </details>
+            </div>
+          </section>
         </div>
-        <div id="titles" class="title-list"></div>
-        <div id="titleStatus" class="status"></div>
-      </section>
-
-      <section class="grid bottom-grid">
-        <section class="panel">
-          <div class="panel-title">
-            <h2>灵感选题</h2>
-            <span id="ideaCount">0 个</span>
+        <div class="config-footer">
+          <p class="hint">Key 仅保存在当前浏览器，请在自己的设备上使用。</p>
+          <div class="config-actions">
+            <button id="clearConfig" class="ghost" type="button">清空本地配置</button>
+            <button id="saveConfig" class="primary" type="button">保存配置</button>
           </div>
-          <div id="ideas" class="idea-list"></div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h2>图片结果</h2>
-            <span id="resultStatus">等待生成</span>
-          </div>
-          <div class="image-grid">
-            <figure>
-              <div class="image-box"><img id="decadeImage" alt="2000年前后旧照片"></div>
-              <figcaption><span>2000年前后旧照片</span><a id="downloadDecade" class="hidden" download="2000年前后旧照片.png">下载</a></figcaption>
-            </figure>
-            <figure>
-              <div class="image-box"><img id="nowImage" alt="现在（2026年）图片"></div>
-              <figcaption><span>现在（2026年）</span><a id="downloadNow" class="hidden" download="现在（2026年）.png">下载</a></figcaption>
-            </figure>
-          </div>
-          <div class="copy-block">
-            <h3>配文</h3>
-            <textarea id="caption" rows="5" placeholder="生成提示词后这里会出现自媒体配文"></textarea>
-          </div>
-        </section>
-      </section>
-    </main>
-
+        </div>
+        <div id="configStatus" class="status" role="status" aria-live="polite"></div>
+      </div></dialog>
+    <dialog id="titlesDialog"><header class="modal-head"><div><h2>短视频标题</h2><small id="titleCount">0 个</small></div><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body"><button id="titleButton" type="button" class="primary">生成标题</button><div id="titleStatus" class="status" role="status" aria-live="polite"></div><div id="titles" class="title-list"></div></div></dialog>
+    <dialog id="detailDialog"><header class="modal-head"><h2 id="detailTitle"></h2><button type="button" class="close" aria-label="关闭">×</button></header><div id="detailBody" class="modal-body"></div></dialog>
+    <dialog id="editorDialog"><header class="modal-head"><h2 id="editorTitle">编辑提示词</h2><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body"><textarea id="editorText" aria-label="完整内容"></textarea><div class="modal-actions"><button id="editorSave" type="button" class="primary">保存修改</button></div></div></dialog>
+    <div class="hidden" aria-hidden="true"><span id="selectedTitle"></span><textarea id="decadePrompt"></textarea><textarea id="nowPrompt"></textarea><textarea id="caption"></textarea></div>
+    <div id="toast" class="toast hidden" role="status"></div>
     <script>
       const $ = (selector) => document.querySelector(selector);
       const storageKey = "timeEchoSingleFileConfig";
@@ -663,10 +291,26 @@
         titles: [],
         titleHistory: [],
         selectedIdea: null,
-        promptPack: null
+        promptPack: null,
+        promptBusy: false
       };
 
       const defaults = {
+        textProvider: "deepseek",
+        beihaiKey: "",
+        beihaiModel: "gpt-5.5",
+        beihaiBaseUrl: "https://api.bhbtc.xyz/v1",
+        beihaiApi: "responses",
+        beihaiReasoningEffort: "high",
+        beihaiImageKey: "",
+        beihaiImageModel: "gpt-image-2",
+        beihaiImageBaseUrl: "https://api.bhbtc.xyz/v1",
+        beihaiImageSize: "1024x1024",
+        beihaiImageQuality: "medium",
+        openaiTextKey: "",
+        openaiTextModel: "gpt-4.1-mini",
+        geminiTextKey: "",
+        geminiTextModel: "gemini-2.5-flash",
         deepseekKey: "",
         deepseekBaseUrl: "https://api.deepseek.com",
         deepseekModel: "deepseek-chat",
@@ -702,9 +346,19 @@
         }
         for (const [key, value] of Object.entries(state.config)) {
           const input = $("#" + key);
-          if (input) input.value = value;
+          if (input?.matches("select[data-model-select]")) {
+            input.querySelectorAll("[data-saved-model]").forEach((option) => option.remove());
+            // 保留用户原先填写的模型，避免下拉预设不包含该名称时丢失配置。
+            if (value && !Array.from(input.options).some((option) => option.value === value)) {
+              const option = new Option(`${value}（已保存）`, value);
+              option.dataset.savedModel = "true";
+              input.add(option);
+            }
+          }
+          if (input) input.value = value || defaults[key];
         }
         $("#providerSelect").value = state.config.defaultProvider || "mock";
+        updateConfigPanels();
         updateKeyStatus();
       }
 
@@ -718,6 +372,7 @@
         localStorage.setItem(storageKey, JSON.stringify(next));
         $("#providerSelect").value = next.defaultProvider;
         showStatus("#configStatus", "配置已保存到当前浏览器。");
+        updateConfigPanels();
         updateKeyStatus();
       }
 
@@ -728,13 +383,35 @@
         showStatus("#configStatus", "本地配置已清空。");
       }
 
+      function updateConfigPanels() {
+        document.querySelectorAll("[data-text-provider]").forEach((panel) => {
+          panel.classList.toggle("hidden", panel.dataset.textProvider !== $("#textProvider").value);
+        });
+        document.querySelectorAll("[data-image-provider]").forEach((panel) => {
+          panel.classList.toggle("hidden", panel.dataset.imageProvider !== $("#defaultProvider").value);
+        });
+      }
+
+      function getTextModelConfig() {
+        const config = state.config;
+        switch (config.textProvider) {
+          case "beihai":
+            return { provider: "beihai", name: "北海 AI", key: config.beihaiKey, model: config.beihaiModel || defaults.beihaiModel, baseUrl: config.beihaiBaseUrl || defaults.beihaiBaseUrl, api: "responses", reasoningEffort: config.beihaiReasoningEffort || defaults.beihaiReasoningEffort };
+          case "openai":
+            return { provider: "openai", name: "OpenAI", key: config.openaiTextKey || config.openaiKey, model: config.openaiTextModel || defaults.openaiTextModel, baseUrl: "https://api.openai.com/v1" };
+          case "gemini":
+            return { provider: "gemini", name: "Gemini", key: config.geminiTextKey || config.geminiKey, model: config.geminiTextModel || defaults.geminiTextModel };
+          default:
+            return { provider: "deepseek", name: "DeepSeek", key: config.deepseekKey, model: config.deepseekModel || defaults.deepseekModel, baseUrl: config.deepseekBaseUrl || defaults.deepseekBaseUrl };
+        }
+      }
+
       function updateKeyStatus() {
-        const parts = [
-          state.config.deepseekKey ? "DeepSeek 已配置" : "DeepSeek 未配置",
-          state.config.openaiKey ? "OpenAI 已配置" : "OpenAI 未配置",
-          state.config.geminiKey ? "Gemini 已配置" : "Gemini 未配置"
-        ];
-        $("#keyStatus").textContent = parts.join(" · ");
+        const text = getTextModelConfig();
+        const provider = $("#providerSelect").value;
+        const model = provider === "mock" ? "流程预览" : provider === "gemini" ? state.config.geminiModel : getOpenAIImageConfig(provider).model;
+        $("#keyStatus").textContent = `文本 ${text.name} · ${text.model}　/　生图 ${providerName(provider)} · ${model}`;
+        $("#keyStatus").title = text.key ? "文本 Key 已配置" : "文本 Key 未配置";
       }
 
       function setBusy(button, busy, text) {
@@ -825,6 +502,16 @@ ${nowPrompt}
         if (!copied) throw new Error("复制失败，请检查浏览器剪贴板权限");
       }
 
+      function apiError(data, response) {
+        const detail = data?.error;
+        const message = (typeof detail === "string" ? detail : detail?.message) || data?.message || detail?.code || detail?.type || `HTTP ${response?.status || "未知"}`;
+        const error = new Error(message);
+        error.status = response?.status;
+        error.code = detail?.code || detail?.type;
+        error.requestId = response?.headers.get("x-request-id") || response?.headers.get("request-id") || data?.request_id || detail?.request_id;
+        return error;
+      }
+
       async function fetchJson(url, options) {
         const response = await fetch(url, options);
         const text = await response.text();
@@ -834,28 +521,63 @@ ${nowPrompt}
         } catch {
           data = { raw: text };
         }
-        if (!response.ok) {
-          throw new Error(data?.error?.message || data?.message || `HTTP ${response.status}`);
-        }
+        if (!response.ok || data.error) throw apiError(data, response);
         return data;
       }
 
-      async function callDeepSeek(messages, temperature = 0.85) {
-        if (!state.config.deepseekKey) throw new Error("DeepSeek API Key 未配置");
-        const baseUrl = state.config.deepseekBaseUrl.replace(/\/$/, "");
-        const data = await fetchJson(`${baseUrl}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Bearer ${state.config.deepseekKey}`
-          },
-          body: JSON.stringify({
-            model: state.config.deepseekModel || "deepseek-chat",
-            messages,
-            temperature
-          })
-        });
-        return data.choices?.[0]?.message?.content || "";
+      async function callTextModel(messages, temperature = 0.85) {
+        const config = getTextModelConfig();
+        if (!config.key) throw new Error(`请先在模型配置中填写 ${config.name} 文本模型的 API Key 并保存。`);
+        const signal = AbortSignal.timeout(180000);
+        let text;
+        if (config.api === "responses") {
+          const baseUrl = config.baseUrl.trim().replace(/\/+$/, "").replace(/\/responses$/, "");
+          const data = await fetchJson(`${baseUrl}/responses`, {
+            method: "POST",
+            signal,
+            headers: { "content-type": "application/json", authorization: `Bearer ${config.key}` },
+            // 北海使用 Responses；推理模型不沿用 Chat Completions 的 temperature 参数。
+            body: JSON.stringify({
+              model: config.model,
+              instructions: messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n"),
+              input: messages.filter((message) => message.role !== "system").map((message) => ({ role: message.role, content: message.content })),
+              reasoning: { effort: config.reasoningEffort },
+              store: false
+            })
+          });
+          if (data.error || data.status === "failed") throw new Error(data.error?.message || "北海 AI 请求失败，请重试。");
+          if (data.status === "incomplete") throw new Error("北海 AI 返回内容不完整，请重试或调整模型设置。");
+          // output 中可能先出现推理信息，只拼接最终消息里的文本。
+          const parts = (data.output || []).filter((item) => item.type === "message").flatMap((item) => item.content || []);
+          const refusal = parts.find((part) => part.type === "refusal");
+          if (refusal) throw new Error(refusal.refusal || "北海 AI 未能完成这次请求，请调整内容后重试。");
+          text = parts.filter((part) => part.type === "output_text").map((part) => part.text || "").join("") || data.output_text || "";
+        } else if (config.provider === "gemini") {
+          const data = await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`, {
+            method: "POST",
+            signal,
+            headers: { "content-type": "application/json", "x-goog-api-key": config.key },
+            body: JSON.stringify({
+              systemInstruction: { parts: messages.filter((message) => message.role === "system").map((message) => ({ text: message.content })) },
+              contents: messages.filter((message) => message.role !== "system").map((message) => ({
+                role: message.role === "assistant" ? "model" : "user",
+                parts: [{ text: message.content }]
+              })),
+              generationConfig: { temperature, responseMimeType: "application/json" }
+            })
+          });
+          text = (data.candidates?.[0]?.content?.parts || []).filter((part) => !part.thought).map((part) => part.text || "").join("");
+        } else {
+          const data = await fetchJson(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            signal,
+            headers: { "content-type": "application/json", authorization: `Bearer ${config.key}` },
+            body: JSON.stringify({ model: config.model, messages, temperature })
+          });
+          text = data.choices?.[0]?.message?.content || "";
+        }
+        if (!text.trim()) throw new Error(`${config.name} 没有返回文本内容，请检查模型名称或重试。`);
+        return text;
       }
 
       function extractJson(text) {
@@ -870,7 +592,6 @@ ${nowPrompt}
       }
 
       async function buildIdeas(payload) {
-        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成选题灵感。");
         const count = Math.min(Number(payload.count) || 6, 12);
         const creativeSeed = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
         const recentIdeas = state.ideaHistory.length ? state.ideaHistory.join("\n") : "无，这是本次会话第一次生成。";
@@ -914,7 +635,7 @@ JSON 格式：
     }
   ]
 }`;
-        const text = await callDeepSeek([
+        const text = await callTextModel([
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ], 1);
@@ -925,7 +646,6 @@ JSON 格式：
       }
 
       async function buildVideoTitles(payload) {
-        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成短视频标题。");
         const count = Math.min(Math.max(Number(payload.count) || 6, 4), 12);
         const selectedContext = state.selectedIdea
           ? JSON.stringify({
@@ -989,7 +709,7 @@ ${recentTitles}
     }
   ]
 }`;
-        const text = await callDeepSeek([
+        const text = await callTextModel([
           {
             role: "system",
             content: "你是克制、敏锐的中文短视频标题编辑。你擅长把散文感、真实生活和点击欲望放在同一句话里。输出必须是严格 JSON。"
@@ -1006,7 +726,6 @@ ${recentTitles}
       }
 
       async function buildPromptPack(idea) {
-        if (!state.config.deepseekKey) throw new Error("请先配置 DeepSeek API Key，再生成图片提示词。");
         const userPrompt = `把下面选题扩写成一组可直接用于生图的提示词。
 选题标题：${idea.title || ""}
 选题故事：${idea.story || ""}
@@ -1042,28 +761,149 @@ JSON 格式：
   "hashtags": ["标签1", "标签2"],
   "quickEdits": ["更有年代感", "更像同一地点"]
 }`;
-        const text = await callDeepSeek([
+        const text = await callTextModel([
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ], 0.75);
         return extractJson(text);
       }
 
+      const flow = {
+        active: null, timer: null, totalMs: 0, lastMessage: "待开始", pair: null, editor: null,
+        steps: Object.fromEntries(["ideas", "prompts", "images", "titles"].map((name) => [name, { status: "idle", elapsed: 0 }]))
+      };
+      const stageStatus = { ideas: "#ideaStatus", prompts: "#promptStatus", images: "#imageStatus", titles: "#titleStatus" };
+      function formatTime(ms) {
+        const seconds = Math.floor(ms / 1000);
+        return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+      }
+      function notify(message) {
+        clearTimeout(flow.toastTimer);
+        $("#toast").textContent = message;
+        $("#toast").classList.remove("hidden");
+        flow.toastTimer = setTimeout(() => $("#toast").classList.add("hidden"), 3000);
+      }
+      function startFlow(name, label) {
+        if (flow.active) return false;
+        flow.active = name;
+        flow.steps[name] = { status: "running", elapsed: 0, started: performance.now(), label };
+        flow.lastMessage = label;
+        renderFlow();
+        flow.timer = setInterval(renderFlow, 250);
+        return true;
+      }
+      function finishFlow(name, error) {
+        const step = flow.steps[name];
+        step.elapsed = performance.now() - step.started;
+        step.status = error ? "error" : "done";
+        flow.totalMs += step.elapsed;
+        flow.active = null;
+        clearInterval(flow.timer);
+        const label = { ideas: "灵感", prompts: "提示词", images: "图片", titles: "标题" }[name];
+        flow.lastMessage = error ? `${label}生成失败` : `${label}已完成`;
+        const node = $(stageStatus[name]);
+        node.classList.remove("loading");
+        showStatus(stageStatus[name], error ? `${friendlyError(error)} · 耗时 ${formatTime(step.elapsed)}` : `已完成 · ${formatTime(step.elapsed)}`, Boolean(error));
+        renderFlow();
+      }
+      function renderFlow() {
+        const active = flow.active;
+        const hasPrompts = Boolean($("#decadePrompt").value.trim() && $("#nowPrompt").value.trim());
+        if (active) {
+          const step = flow.steps[active];
+          step.elapsed = performance.now() - step.started;
+          const node = $(stageStatus[active]);
+          node.className = "status loading";
+          // 保留圆环节点；每次计时都重建会让旋转动画不断从头开始。
+          if (!node.querySelector(".run-line")) {
+            node.innerHTML = '<div class="run-line"><i class="spinner" aria-hidden="true"></i><span></span><b></b></div>';
+          }
+          node.querySelector(".run-line span").textContent = step.label;
+          node.querySelector(".run-line b").textContent = `已等待 ${formatTime(step.elapsed)}`;
+        }
+        for (const [name, step] of Object.entries(flow.steps)) {
+          const nav = document.querySelector(`[data-step="${name}"]`);
+          if (nav) {
+            nav.className = `journey-step ${step.status === "running" ? "running" : step.status === "done" ? "done" : step.status === "error" ? "error" : ""}`;
+            nav.querySelector(".step-disc").textContent = step.status === "done" ? "✓" : step.status === "error" ? "!" : { ideas: "02", prompts: "03", images: "04" }[name];
+            nav.querySelector("small").textContent = step.status === "idle" ? "待开始" : `${{ running: "进行中", done: "已完成", error: "失败" }[step.status]} · ${formatTime(step.elapsed)}`;
+          }
+          const panel = $("#" + name + "Stage");
+          panel?.classList.toggle("active-stage", active === name);
+          panel?.setAttribute("aria-busy", String(active === name));
+        }
+        $(".prompt-content").setAttribute("aria-busy", String(active === "prompts"));
+        $("#totalTime").textContent = formatTime(flow.totalMs + (active ? flow.steps[active].elapsed : 0));
+        $("#globalStatus").textContent = active ? flow.steps[active].label : flow.lastMessage;
+        $("#promptBadge").textContent = active === "prompts" ? "生成中" : hasPrompts ? "可编辑" : "待生成";
+        $("#ideaButton").disabled = Boolean(active);
+        $("#generatePromptButton").disabled = Boolean(active) || !state.selectedIdea;
+        $("#promptButton").disabled = Boolean(active) || !state.selectedIdea;
+        $("#imageButton").disabled = Boolean(active) || !hasPrompts;
+        $("#copyPromptButton").disabled = !hasPrompts;
+        $("#titleButton").disabled = Boolean(active);
+        $("#retryImageButton").disabled = Boolean(active) || !hasPrompts;
+        $("#exportButton").disabled = !$("#decadeImage").hasAttribute("src");
+        $("#ideaDetailButton").disabled = !state.selectedIdea;
+        document.querySelectorAll(".idea-card, #ideaForm input, #ideaForm select, #ideaForm textarea, #providerSelect, #ratio, #saveConfig, #clearConfig, #toggleConfig, [data-editor]").forEach((element) => { element.disabled = Boolean(active); });
+        const names = { ideaButton: ["生成灵感 →", "生成灵感中"], generatePromptButton: ["生成作图提示词 →", "生成提示词中"], imageButton: ["生成两张对照图 →", "图片生成中"], titleButton: ["生成标题", "生成标题中"] };
+        for (const [id, labels] of Object.entries(names)) $("#" + id).textContent = labels[active === { ideaButton: "ideas", generatePromptButton: "prompts", imageButton: "images", titleButton: "titles" }[id] ? 1 : 0];
+      }
+      function refreshPreviews() {
+        $("#decadePreview").textContent = $("#decadePrompt").value || "等待生成提示词";
+        $("#nowPreview").textContent = $("#nowPrompt").value || "等待生成提示词";
+        $("#captionPreview").textContent = $("#caption").value || "暂无配文";
+        renderFlow();
+      }
+      function clearImages(resetTiming = true) {
+        flow.pair = null;
+        for (const [image, link, placeholder, label] of [["decadeImage", "downloadDecade", "decadePlaceholder", "等待生成"], ["nowImage", "downloadNow", "nowPlaceholder", "等待旧照"]]) {
+          $("#" + image).removeAttribute("src");
+          $("#" + image).closest("button").disabled = true;
+          $("#" + image).parentElement.classList.remove("working");
+          $("#" + link).classList.add("hidden");
+          $("#" + link).removeAttribute("href");
+          $("#" + placeholder).textContent = label;
+        }
+        $("#decadeTime").textContent = "旧照";
+        $("#nowTime").textContent = "现在";
+        $("#retryImageButton").classList.add("hidden");
+        $("#resultStatus").textContent = "待生成";
+        if (resetTiming) {
+          flow.steps.images = { status: "idle", elapsed: 0 };
+          showStatus("#imageStatus", "");
+          $("#imageStatus").classList.remove("loading");
+        }
+      }
+      function clearPrompts() {
+        state.promptPack = null;
+        for (const id of ["decadePrompt", "nowPrompt", "caption"]) $("#" + id).value = "";
+        flow.steps.prompts = { status: "idle", elapsed: 0 };
+        showStatus("#promptStatus", "");
+        clearImages();
+        refreshPreviews();
+      }
+      function showDetail(title, content) {
+        $("#detailTitle").textContent = title;
+        $("#detailBody").replaceChildren(content);
+        $("#detailDialog").showModal();
+      }
+
       function renderIdeas() {
         $("#ideaCount").textContent = `${state.ideas.length} 个`;
-        $("#ideas").innerHTML = "";
-        state.ideas.forEach((idea) => {
+        $("#ideas").replaceChildren();
+        state.ideas.forEach((idea, index) => {
           const button = document.createElement("button");
-          button.className = `idea-card${state.selectedIdea?.id === idea.id ? " active" : ""}`;
+          button.className = `idea-card${state.selectedIdea === idea ? " active" : ""}`;
           button.type = "button";
-          button.innerHTML = `
-            <strong>${escapeHtml(idea.title)}</strong>
-            <p>${escapeHtml(idea.story)}</p>
-            <span>${escapeHtml(idea.hook || idea.emotion || "")}</span>
-          `;
+          button.disabled = Boolean(flow.active);
+          button.setAttribute("aria-pressed", String(state.selectedIdea === idea));
+          button.title = idea.title || "灵感";
+          button.innerHTML = `<strong>${String(index + 1).padStart(2, "0")}　${escapeHtml(idea.title)}</strong><p>${escapeHtml(idea.story || idea.hook || idea.emotion || "")}</p>`;
           button.addEventListener("click", () => selectIdea(idea));
           $("#ideas").append(button);
         });
+        renderFlow();
       }
 
       function renderTitles() {
@@ -1092,74 +932,110 @@ JSON 格式：
         });
       }
 
-      async function selectIdea(idea) {
+      function selectIdea(idea) {
+        if (flow.active || state.selectedIdea === idea) return;
         state.selectedIdea = idea;
+        $("#selectedTitle").textContent = idea.title || "";
+        clearPrompts();
         renderIdeas();
-        await fillPromptPack(idea);
       }
 
       async function fillPromptPack(idea) {
-        const button = $("#promptButton");
-        setBusy(button, true, "生成提示词中");
-        showStatus("#imageStatus", "正在生成提示词...");
+        if (!idea || !startFlow("prompts", "正在生成提示词")) return;
+        state.promptBusy = true;
+        let failure;
         try {
           const pack = await buildPromptPack(idea);
+          if (typeof pack.decadePrompt !== "string" || !pack.decadePrompt.trim() || typeof pack.nowPrompt !== "string" || !pack.nowPrompt.trim()) {
+            throw new Error("模型未返回完整的两段提示词，原有内容已保留。");
+          }
           state.promptPack = pack;
           $("#selectedTitle").textContent = pack.title || idea.title;
           $("#ratio").value = normalizeRatio(pack.ratio) || $("#ratio").value;
-          $("#decadePrompt").value = withOldPhotoTexture(pack.decadePrompt || "");
-          $("#nowPrompt").value = withCurrentPhoneTexture(pack.nowPrompt || "");
+          $("#decadePrompt").value = withOldPhotoTexture(pack.decadePrompt);
+          $("#nowPrompt").value = withCurrentPhoneTexture(pack.nowPrompt);
           $("#caption").value = pack.caption || "";
-          showStatus("#imageStatus", "提示词已生成，可以直接生图，也可以先手动改。");
+          clearImages();
+          refreshPreviews();
         } catch (error) {
-          showStatus("#imageStatus", friendlyError(error), true);
+          failure = error;
         } finally {
-          setBusy(button, false);
+          state.promptBusy = false;
+          finishFlow("prompts", failure);
         }
       }
 
-      async function imageFromOpenAI(prompt) {
-        if (!state.config.openaiKey) throw new Error("OpenAI API Key 未配置");
-        const data = await fetchJson("https://api.openai.com/v1/images/generations", {
+      function getOpenAIImageConfig(provider = "openai") {
+        const config = state.config;
+        if (provider === "beihai") {
+          return { provider, name: "北海 AI", key: config.beihaiImageKey || config.beihaiKey, model: config.beihaiImageModel || defaults.beihaiImageModel, baseUrl: (config.beihaiImageBaseUrl || defaults.beihaiImageBaseUrl).trim().replace(/\/+$/, ""), size: config.beihaiImageSize || defaults.beihaiImageSize, quality: config.beihaiImageQuality || defaults.beihaiImageQuality };
+        }
+        return { provider, name: "OpenAI", key: config.openaiKey, model: config.openaiModel || defaults.openaiModel, baseUrl: "https://api.openai.com/v1", size: config.openaiSize || defaults.openaiSize, quality: config.openaiQuality || defaults.openaiQuality };
+      }
+
+      async function imageFromOpenAI(prompt, config = getOpenAIImageConfig()) {
+        if (!config.key) throw new Error(`${config.name} 生图 API Key 未配置，请填写并保存配置。`);
+        const data = await fetchJson(`${config.baseUrl}/images/generations`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            authorization: `Bearer ${state.config.openaiKey}`
+            authorization: `Bearer ${config.key}`
           },
           body: JSON.stringify({
-            model: state.config.openaiModel || "gpt-image-2",
+            model: config.model,
             prompt,
-            size: state.config.openaiSize || "1024x1024",
-            quality: state.config.openaiQuality || "medium",
+            size: config.size,
+            quality: config.quality,
             n: 1
           })
         });
         const item = data.data?.[0] || {};
         if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
         if (item.url) return item.url;
-        throw new Error("OpenAI 没有返回图片数据");
+        throw new Error(`${config.name} 没有返回图片数据`);
       }
 
-      async function imageEditFromOpenAI(prompt, referenceDataUrl) {
-        if (!referenceDataUrl?.startsWith("data:")) return imageFromOpenAI(prompt);
-        if (!state.config.openaiKey) throw new Error("OpenAI API Key 未配置");
-        const form = new FormData();
-        form.append("model", state.config.openaiModel || "gpt-image-2");
-        form.append("prompt", prompt);
-        form.append("size", state.config.openaiSize || "1024x1024");
-        form.append("quality", state.config.openaiQuality || "medium");
-        form.append("n", "1");
-        form.append("image", dataUrlToBlob(referenceDataUrl), "reference.png");
+      async function imageEditFromOpenAI(prompt, referenceDataUrl, config = getOpenAIImageConfig()) {
+        if (!config.key) throw new Error(`${config.name} 生图 API Key 未配置，请填写并保存配置。`);
+        let data;
+        if (config.provider === "beihai" && /^https?:\/\//i.test(referenceDataUrl || "")) {
+          // 北海图床未开放 CORS；由生图服务读取原图，避免浏览器下载后再上传。
+          data = await fetchJson(`${config.baseUrl}/images/edits`, {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: `Bearer ${config.key}` },
+            body: JSON.stringify({
+              model: config.model,
+              prompt,
+              size: config.size,
+              quality: config.quality,
+              n: 1,
+              images: [{ image_url: referenceDataUrl }]
+            })
+          });
+        } else {
+          if (!referenceDataUrl?.startsWith("data:")) {
+            if (config.provider === "beihai") throw new Error("参考图地址无效，未提交第二张生成请求。");
+            return imageFromOpenAI(prompt, config);
+          }
+          const reference = dataUrlToBlob(referenceDataUrl);
+          const form = new FormData();
+          form.append("model", config.model);
+          form.append("prompt", prompt);
+          form.append("size", config.size);
+          form.append("quality", config.quality);
+          form.append("n", "1");
+          form.append("image", reference, "reference.png");
 
-        const data = await fetchJson("https://api.openai.com/v1/images/edits", {
-          method: "POST",
-          headers: { authorization: `Bearer ${state.config.openaiKey}` },
-          body: form
-        });
+          data = await fetchJson(`${config.baseUrl}/images/edits`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${config.key}` },
+            body: form
+          });
+        }
         const item = data.data?.[0] || {};
         if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
         if (item.url) return item.url;
-        throw new Error("OpenAI 没有返回图片数据");
+        throw new Error(`${config.name} 没有返回图片数据`);
       }
 
       async function imageFromGemini(prompt, referenceDataUrl) {
@@ -1216,7 +1092,7 @@ JSON 格式：
         return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
       }
 
-      async function generateImages() {
+      async function generateImages(retry = false) {
         const provider = $("#providerSelect").value;
         const title = $("#selectedTitle").textContent || "2000年前后旧照片和现在（2026年）";
         const decadePrompt = withOldPhotoTexture($("#decadePrompt").value.trim());
@@ -1227,26 +1103,48 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
 
 【图2最终检查】
 再次确认：图片2的相机位置、裁切、透视、道路或院落几何、建筑主体、墙体、门窗开口、屋脊轮廓、成熟树主干和电线杆必须与图片1严格对齐。不要把自行车、盆、篮筐、工具、衣物、动物和零散杂物当作固定参照物；其中60%-90%应消失、移位、被替换或明显腐坏。检查是否有不规则杂草、跨材质老化，以及至少一种非表面变化；不能只做无人、冷色、落灰和褪色。`;
-        if (!decadePrompt || !nowPrompt.trim()) throw new Error("请先生成或填写两段提示词");
+        if (!$("#decadePrompt").value.trim() || !$("#nowPrompt").value.trim()) throw new Error("请先生成或填写两段提示词");
 
-        let decadeUrl;
-        let nowUrl;
-        if (provider === "openai") {
-          decadeUrl = await imageFromOpenAI(decadePrompt);
-          nowUrl = await imageEditFromOpenAI(nowPrompt, decadeUrl);
-        } else if (provider === "gemini") {
-          decadeUrl = await imageFromGemini(decadePrompt);
-          nowUrl = await imageFromGemini(nowPrompt, decadeUrl);
-        } else {
-          decadeUrl = await mockImage(title, decadePrompt, "old");
-          nowUrl = await mockImage(title, nowPrompt, "now");
+        // 仅在请求条件完全一致时复用第一张，避免把新提示词与旧参考图混在一起。
+        const signature = JSON.stringify({ provider, decadePrompt, nowPrompt, ratio: $("#ratio").value, config: state.config });
+        const reuse = retry && flow.pair?.signature === signature && flow.pair.decadeUrl;
+        if (!reuse) {
+          clearImages(false);
+          flow.pair = { signature, provider, decadeUrl: null, nowUrl: null };
         }
-        return { provider, decadeUrl, nowUrl };
+        const pair = flow.pair;
+        const config = provider === "openai" || provider === "beihai" ? getOpenAIImageConfig(provider) : null;
+        if (!reuse) {
+          flow.steps.images.label = "生成旧照 · 第 1/2 张";
+          $("#decadePlaceholder").innerHTML = '<i class="spinner"></i>生成中';
+          $("#decadeImage").parentElement.classList.add("working");
+          renderFlow();
+          const started = performance.now();
+          pair.decadeUrl = config ? await imageFromOpenAI(decadePrompt, config)
+            : provider === "gemini" ? await imageFromGemini(decadePrompt) : await mockImage(title, decadePrompt, "old");
+          pair.oldMs = performance.now() - started;
+          setImage("#decadeImage", "#downloadDecade", pair.decadeUrl, "2000年前后旧照片.png");
+          $("#decadeTime").textContent = `完成 · ${formatTime(pair.oldMs)}`;
+        }
+        $("#resultStatus").textContent = "1 / 2 已完成";
+        flow.steps.images.label = "生成今照 · 第 2/2 张";
+        $("#nowPlaceholder").innerHTML = '<i class="spinner"></i>生成中';
+        $("#nowImage").parentElement.classList.add("working");
+        renderFlow();
+        const started = performance.now();
+        pair.nowUrl = config ? await imageEditFromOpenAI(nowPrompt, pair.decadeUrl, config)
+          : provider === "gemini" ? await imageFromGemini(nowPrompt, pair.decadeUrl) : await mockImage(title, nowPrompt, "now");
+        pair.nowMs = performance.now() - started;
+        setImage("#nowImage", "#downloadNow", pair.nowUrl, "现在（2026年）.png");
+        $("#nowTime").textContent = `完成 · ${formatTime(pair.nowMs)}`;
+        return { provider, decadeUrl: pair.decadeUrl, nowUrl: pair.nowUrl };
       }
 
       function setImage(selector, downloadSelector, url, fileName) {
         const img = $(selector);
         img.src = url;
+        img.closest("button").disabled = false;
+        img.parentElement.classList.remove("working");
         const link = $(downloadSelector);
         link.href = url;
         link.download = fileName;
@@ -1285,11 +1183,19 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
       }
 
       function providerName(provider) {
-        return { openai: "OpenAI", gemini: "Gemini", mock: "Mock" }[provider] || provider;
+        return { beihai: "北海 AI", openai: "OpenAI", gemini: "Gemini", mock: "Mock" }[provider] || provider;
       }
 
       function friendlyError(error) {
         const message = error?.message || "请求失败";
+        const suffix = [error?.status ? `HTTP ${error.status}` : "", error?.requestId ? `请求编号 ${error.requestId}` : ""].filter(Boolean).join(" · ");
+        const detail = suffix ? `（${suffix}）` : "";
+        if (error?.name === "TimeoutError" || error?.name === "AbortError") return "文本请求超时（已等待 3 分钟）。请稍后重试，或切换其他文本模型；原有提示词不会被清空。";
+        if (error?.status === 401 || error?.status === 403) return `接口拒绝访问，请检查 Key 和模型权限。${detail}`;
+        if (error?.status === 429) return `接口请求过于频繁或额度受限，请稍后重试并检查额度。${detail}`;
+        if (message === "openai_error" || error?.code === "openai_error" || error?.status >= 500) {
+          return `模型服务上游返回错误，可能是服务繁忙或请求超时。请稍后重试，或切换其他文本模型。${detail}${message === "openai_error" ? "" : ` ${message}`}`;
+        }
         if (message.includes("Failed to fetch")) {
           return "请求被浏览器拦截或网络不可达。单文件直连 API 时常见原因是 CORS、代理或网络限制。";
         }
@@ -1310,113 +1216,142 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
         return escapeHtml(value);
       }
 
-      $("#toggleConfig").addEventListener("click", () => {
-        $("#configPanel").classList.toggle("hidden");
-      });
-
-      $("#saveConfig").addEventListener("click", saveConfig);
+      $("#toggleConfig").addEventListener("click", () => $("#configPanel").showModal());
+      $("#textProvider").addEventListener("change", updateConfigPanels);
+      $("#defaultProvider").addEventListener("change", updateConfigPanels);
+      $("#saveConfig").addEventListener("click", () => { saveConfig(); $("#configPanel").close(); notify("配置已保存"); });
       $("#clearConfig").addEventListener("click", clearConfig);
-
       $("#providerSelect").addEventListener("change", () => {
         $("#defaultProvider").value = $("#providerSelect").value;
+        updateConfigPanels();
         state.config.defaultProvider = $("#providerSelect").value;
         localStorage.setItem(storageKey, JSON.stringify({ ...state.config }));
+        updateKeyStatus();
       });
-
       $("#ideaForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const button = event.submitter;
-        setBusy(button, true, "生成中");
-        showStatus("#ideaStatus", "正在生成选题...");
+        if (!startFlow("ideas", "正在生成灵感")) return;
+        let failure;
         try {
-          const data = await buildIdeas({
-            brief: $("#brief").value.trim(),
-            theme: $("#theme").value,
-            emotion: $("#emotion").value,
-            platform: $("#platform").value,
-            count: $("#count").value
-          });
-          state.ideas = data.ideas || [];
-          state.selectedIdea = null;
+          const data = await buildIdeas({ brief: $("#brief").value.trim(), theme: $("#theme").value, emotion: $("#emotion").value, platform: $("#platform").value, count: $("#count").value });
+          if (!Array.isArray(data.ideas) || !data.ideas.length) throw new Error("模型没有返回灵感，请重试。");
+          state.ideas = data.ideas;
+          state.selectedIdea = state.ideas[0];
+          $("#selectedTitle").textContent = state.selectedIdea.title || "";
+          clearPrompts();
           renderIdeas();
-          showStatus("#ideaStatus", "AI 已生成一批新选题，并会在本次会话中避开重复场景。");
-        } catch (error) {
-          showStatus("#ideaStatus", friendlyError(error), true);
-        } finally {
-          setBusy(button, false);
-        }
+        } catch (error) { failure = error; }
+        finally { finishFlow("ideas", failure); }
       });
-
+      $("#openTitles").addEventListener("click", () => $("#titlesDialog").showModal());
       $("#titleButton").addEventListener("click", async () => {
-        const button = $("#titleButton");
-        setBusy(button, true, "生成标题中");
-        showStatus("#titleStatus", "正在打磨标题和前三秒开场...");
+        if (!startFlow("titles", "正在生成标题")) return;
+        let failure;
         try {
-          const data = await buildVideoTitles({
-            brief: $("#brief").value.trim(),
-            theme: $("#theme").value,
-            emotion: $("#emotion").value,
-            platform: $("#platform").value,
-            count: $("#count").value
-          });
-          state.titles = data.titles || [];
+          const data = await buildVideoTitles({ brief: $("#brief").value.trim(), theme: $("#theme").value, emotion: $("#emotion").value, platform: $("#platform").value, count: $("#count").value });
+          if (!data.titles?.length) throw new Error("模型没有返回标题，请重试。");
+          state.titles = data.titles;
           renderTitles();
-          showStatus("#titleStatus", state.titles.length
-            ? "标题已生成。点击任意标题即可复制，再次生成会避开本次会话中已有的标题。"
-            : "模型没有返回标题，请再试一次。", !state.titles.length);
-        } catch (error) {
-          showStatus("#titleStatus", friendlyError(error), true);
-        } finally {
-          setBusy(button, false);
-        }
+        } catch (error) { failure = error; }
+        finally { finishFlow("titles", failure); }
       });
-
-      $("#promptButton").addEventListener("click", async () => {
-        const idea = state.selectedIdea || {
-          title: $("#selectedTitle").textContent,
-          story: $("#brief").value.trim() || "同一个地点，2000年前后旧照片里有人陪伴，现在（2026年）独自重返。",
-          hook: "时间改变了场景，也改变了站在这里的人。"
-        };
-        await fillPromptPack(idea);
-      });
-
+      for (const id of ["generatePromptButton", "promptButton"]) $("#" + id).addEventListener("click", () => fillPromptPack(state.selectedIdea));
       $("#copyPromptButton").addEventListener("click", async () => {
-        if (!$("#decadePrompt").value.trim() || !$("#nowPrompt").value.trim()) {
-          showStatus("#imageStatus", "请先填写旧照片和现在（2026年）两段提示词。", true);
-          return;
-        }
-        try {
-          await copyText(buildPromptCopyText());
-          showStatus("#imageStatus", "竖版上下合图提示词已复制。");
-        } catch (error) {
-          showStatus("#imageStatus", friendlyError(error), true);
-        }
+        try { await copyText(buildPromptCopyText()); notify("合图提示词已复制"); }
+        catch (error) { notify(friendlyError(error)); }
       });
-
-      $("#imageButton").addEventListener("click", async () => {
-        const button = $("#imageButton");
-        setBusy(button, true, "图片生成中");
-        showStatus("#imageStatus", "正在生成两张图片...");
-        $("#resultStatus").textContent = "正在生成";
-        $("#decadeImage").removeAttribute("src");
-        $("#nowImage").removeAttribute("src");
-        $("#downloadDecade").classList.add("hidden");
-        $("#downloadNow").classList.add("hidden");
+      async function runImages(retry = false) {
+        if (!startFlow("images", "正在准备图片")) return;
+        let failure;
+        $("#retryImageButton").classList.add("hidden");
         try {
-          const result = await generateImages();
-          setImage("#decadeImage", "#downloadDecade", result.decadeUrl, "2000年前后旧照片.png");
-          setImage("#nowImage", "#downloadNow", result.nowUrl, "现在（2026年）.png");
-          $("#resultStatus").textContent = `${providerName(result.provider)} 已完成`;
-          showStatus("#imageStatus", "图片已生成。");
+          await generateImages(retry);
+          $("#resultStatus").textContent = "2 / 2 已完成";
         } catch (error) {
-          $("#resultStatus").textContent = "生成失败";
-          showStatus("#imageStatus", friendlyError(error), true);
+          failure = error;
+          const hasOld = Boolean(flow.pair?.decadeUrl);
+          $("#resultStatus").textContent = hasOld ? "1 / 2 已保留" : "生成失败";
+          $("#retryImageButton").classList.toggle("hidden", !hasOld);
+          $(hasOld ? "#nowPlaceholder" : "#decadePlaceholder").textContent = "生成失败";
         } finally {
-          setBusy(button, false);
+          document.querySelectorAll(".photo-surface").forEach((el) => el.classList.remove("working"));
+          finishFlow("images", failure);
         }
+      }
+      $("#imageButton").addEventListener("click", () => runImages());
+      $("#retryImageButton").addEventListener("click", () => runImages(true));
+      $("#ideaDetailButton").addEventListener("click", () => {
+        if (!state.selectedIdea) return;
+        const content = document.createElement("div");
+        for (const [key, label] of [["story", "故事"], ["anchorObject", "场景锚点"], ["oldLifeDetails", "旧照"], ["nowDecayDetails", "现在"], ["hook", "共情点"]]) {
+          if (!state.selectedIdea[key]) continue;
+          const paragraph = document.createElement("p");
+          paragraph.className = "detail-copy";
+          paragraph.textContent = `${label}：${state.selectedIdea[key]}`;
+          content.append(paragraph);
+        }
+        showDetail(state.selectedIdea.title || "灵感详情", content);
+      });
+      document.querySelectorAll("[data-editor]").forEach((button) => button.addEventListener("click", () => {
+        flow.editor = button.dataset.editor;
+        $("#editorTitle").textContent = { decadePrompt: "旧照片提示词", nowPrompt: "现在照片提示词", caption: "配文" }[flow.editor];
+        $("#editorText").value = $("#" + flow.editor).value;
+        $("#editorDialog").showModal();
+      }));
+      $("#editorSave").addEventListener("click", () => {
+        const field = $("#" + flow.editor);
+        if (field.value !== $("#editorText").value) {
+          field.value = $("#editorText").value;
+          if (flow.editor !== "caption") clearImages();
+          refreshPreviews();
+        }
+        $("#editorDialog").close();
+      });
+      document.querySelectorAll("[data-photo]").forEach((button) => button.addEventListener("click", () => {
+        const original = $("#" + button.dataset.photo);
+        if (!original.hasAttribute("src")) return;
+        const image = document.createElement("img");
+        image.src = original.src;
+        image.alt = original.alt;
+        image.className = "photo-enlarged";
+        showDetail(original.alt, image);
+      }));
+      $("#exportButton").addEventListener("click", () => {
+        const content = document.createElement("div");
+        content.className = "export-actions";
+        for (const [id, label] of [["downloadDecade", "下载旧照片"], ["downloadNow", "下载现在照片"]]) {
+          const original = $("#" + id);
+          if (original.classList.contains("hidden")) continue;
+          const link = original.cloneNode(true);
+          link.removeAttribute("id");
+          link.textContent = label;
+          link.className = "secondary";
+          content.append(link);
+        }
+        const captionButton = document.createElement("button");
+        captionButton.textContent = "下载配文";
+        captionButton.addEventListener("click", () => {
+          const url = URL.createObjectURL(new Blob([$("#caption").value], { type: "text/plain;charset=utf-8" }));
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "配文.txt";
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+        content.append(captionButton);
+        showDetail("下载作品", content);
+      });
+      document.querySelectorAll("dialog").forEach((dialog) => {
+        dialog.querySelector(".close").addEventListener("click", () => dialog.close());
+        dialog.addEventListener("click", (event) => {
+          if (event.target !== dialog) return;
+          const rect = dialog.getBoundingClientRect();
+          if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+        });
       });
 
       loadConfig();
+      refreshPreviews();
     </script>
   </body>
 </html>
