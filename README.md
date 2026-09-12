@@ -72,4 +72,4 @@ python server.py --no-browser --output-dir outputs\batch-qa --port 18765
 
 通知使用 Telegram 官方 Bot API，不使用模型 API。成功回执去重，结果不确定时不自动重发；通知失败不会导致重新出片。技能需由正在运行的 Codex 调用，不是常驻监控，不能在电脑关机或 Codex 完全无法运行时保证提醒。机器人回复尚未接入遥控或自动恢复。
 
-时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、含 AI 生成内容。发布方式按当前任务要求和可用工具执行，发布状态按实际结果记录。详细流程见 `skills/time-echo-video/references/publishing.md`。
+时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、含 AI 生成内容。现已按用户要求接入自动发布技能流程：调用 `打开视频号.bat` 打开 Chrome，需要登录时向本人 Telegram 发实际二维码并等待网页确认登录，按截图填写设置与文案，登记提交意图后点击发布并核实结果。Chrome 必须接入浏览器控制，截图导出与文件上传也须由当前工具支持；目前 Chrome 尚未接通，真实登录、上传与发布尚未验证。独立 `publish-progress.json` 记录登录、上传、提交、结果与通知交付进度；视频做好但发布未完成时恢复原批，提交结果不明时先核实，避免重复发布。历史成片不会自动补发。详细流程见 `skills/time-echo-video/references/publishing.md`。

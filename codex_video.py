@@ -27,6 +27,20 @@ CHECKS = {"old": ["realism", "era", "anatomy", "composition", "no_text"],
 DEFAULTS = {"counts": [5, 6], "max_image_calls": 36, "attempts_per_image": 3,
             "candidates_per_pair": 3, "keep_images": False,
             "output_dir": "outputs/codex-time-echo"}
+PUBLISH_CHECKS = ("video", "upload_complete", "description", "short_title", "location",
+                  "collection", "link", "activity", "schedule", "original", "ai_label")
+PUBLISH_TRANSITIONS = {
+    "awaiting_publish": {"blocked"},
+    "prepared": {"waiting_login", "uploading", "blocked"},
+    "waiting_login": {"waiting_login", "uploading", "blocked"},
+    "uploading": {"ready", "waiting_login", "blocked"},
+    "ready": {"ready", "submitting", "waiting_login", "uploading", "blocked"},
+    "submitting": {"published", "uncertain"},
+    "uncertain": {"published", "ready"},
+    "blocked": {"waiting_login", "uploading", "blocked"},
+    "published": {"delivered"},
+    "delivered": set(),
+}
 
 
 class ExecutionBusy(ValueError):
@@ -199,6 +213,8 @@ class Workspace:
                 return {"execution": self.execution()}
             if action == "status":
                 return {**self.load(run_id)[1], "execution": self.execution()}
+            if action == "publish-status":
+                return self.publication(self.load(run_id)[0])
             if not isinstance(owner, str) or not owner.strip():
                 raise ValueError("缺少执行者身份；在 Codex 任务中运行，或通过 --owner 指定真实任务 ID")
             if action == "begin":
@@ -230,6 +246,8 @@ class Workspace:
             if action == "replace": return self.replace(folder, data, pair, reason)
             if action == "render": return self.render(folder, data)
             if action == "finish": return self.finish(folder, data, read_json(file))
+            if action == "publish-init": return self.prepare_publication(folder, data, read_json(file))
+            if action == "publish-step": return self.publication_step(folder, data, read_json(file))
             if action == "block":
                 data.update(status="blocked", error=reason)
                 self.save(folder, data)
@@ -251,7 +269,8 @@ class Workspace:
         active = self.output / "active.json"
         if active.exists():
             folder, data = self.load(read_json(active)["run_id"])
-            if data["status"] != "done":
+            publication = self.publication(folder)
+            if data["status"] != "done" or publication["status"] not in ("not_started", "delivered"):
                 return {"resumed": True, "folder": str(folder), **data}
         audio = preflight(self.root)
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S_") + uuid.uuid4().hex[:6]
@@ -445,9 +464,89 @@ class Workspace:
                 if path.is_file() and not path.is_symlink() and path.suffix == ".png":
                     path.unlink()
             data["images_cleared"] = True
+        if self.publication(folder)["status"] == "not_started":
+            write_json(folder / "publish-progress.json", {"run_id": data["run_id"],
+                "status": "awaiting_publish", "events": []})
         data["status"] = "done"
         self.save(folder, data)
         return {"status": "done", "path": data["video"], "image_calls": data["image_calls"]}
+
+    def publication(self, folder):
+        path = folder / "publish-progress.json"
+        return read_json(path) if path.exists() else {"status": "not_started"}
+
+    def prepare_publication(self, folder, data, info):
+        if data["status"] != "done":
+            raise ValueError("先完成视频审核与 finish，再准备发布")
+        if info.get("run_id") != data["run_id"] or Path(info.get("video", "")).resolve() != Path(data["video"]).resolve():
+            raise ValueError("发布资料必须对应本批次实际成片")
+        for key in ("short_title", "description"):
+            if not isinstance(info.get(key), str) or not info[key].strip():
+                raise ValueError(f"发布资料缺少 {key}")
+        if not isinstance(info.get("hashtags"), list) or not all(isinstance(t, str) for t in info["hashtags"]):
+            raise ValueError("hashtags 必须是字符串数组")
+        expected = {"location": "不显示位置", "collection": "旧时光", "link": None,
+                    "activity": "不参与活动", "schedule": "不定时", "original_requested": True,
+                    "ai_label": "含AI生成内容"}
+        if info.get("settings") != expected:
+            raise ValueError("发布设置与本项目用户指定的截图不一致")
+        info = {k: info[k] for k in ("run_id", "video", "short_title", "description", "hashtags", "settings")}
+        video_hash = digest(data["video"])
+        progress = self.publication(folder)
+        if "info" in progress:
+            if progress["video_sha256"] != video_hash:
+                raise ValueError("已登记的视频发生变化，不能覆盖原发布记录")
+            if progress["info"] == info:
+                return progress
+            if any(e["status"] == "submitting" for e in progress["events"]):
+                raise ValueError("已经尝试提交，不能覆盖原发布资料")
+        if progress["status"] not in ("not_started", "awaiting_publish", "prepared", "waiting_login", "uploading", "ready", "blocked"):
+            raise ValueError("当前发布状态不允许初始化")
+        progress.update(run_id=data["run_id"], status="prepared", info=info, video_sha256=video_hash)
+        progress.setdefault("events", []).append({"status": "prepared", "at": datetime.now(timezone.utc).isoformat()})
+        write_json(folder / "publish-progress.json", progress)
+        return progress
+
+    def publication_step(self, folder, data, event):
+        progress = self.publication(folder)
+        previous = progress["status"]
+        target = event.get("status")
+        if target not in PUBLISH_TRANSITIONS.get(previous, set()):
+            raise ValueError(f"不能从 {previous} 转到 {target}；提交中或结果不确定时先核实，不能重复发布")
+        if not isinstance(event.get("evidence"), str) or not event["evidence"].strip():
+            raise ValueError("必须记录实际页面观察或真实阻塞原因")
+        if target != "blocked" and "info" not in progress:
+            raise ValueError("先 publish-init 保存发布资料")
+        if target in ("ready", "submitting", "published"):
+            if digest(data["video"]) != progress["video_sha256"]:
+                raise ValueError("成片已变化，不能沿用原发布记录")
+        if target == "ready":
+            if not isinstance(event.get("account"), str) or not event["account"].strip():
+                raise ValueError("必须记录实际登录的视频号名称")
+            if not isinstance(event.get("checks"), dict) or not all(event["checks"].get(k) is True for k in PUBLISH_CHECKS):
+                raise ValueError("发布前必须核对视频、上传完成、文案及截图中的全部设置")
+            if previous == "uncertain" and event.get("confirmed_not_submitted") is not True:
+                raise ValueError("结果不确定时，必须先取得未提交成功的明确证据")
+        if target == "published":
+            if not isinstance(event.get("receipt"), str) or not event["receipt"].strip():
+                raise ValueError("必须记录平台发表成功提示或匹配本条视频的作品记录")
+        if target == "delivered":
+            receipts = event.get("notification_receipts")
+            if not isinstance(receipts, dict):
+                raise ValueError("必须记录成片、视频和发布结果的通知回执")
+            for key in ("complete", "video", "published"):
+                receipt = receipts.get(key, {})
+                if not isinstance(receipt, dict):
+                    raise ValueError("通知回执结构无效")
+                if key == "video" and receipt.get("status") == "skipped_oversize" and receipt.get("reason"):
+                    continue
+                if receipt.get("status") not in ("sent", "already_sent") or type(receipt.get("message_id")) is not int:
+                    raise ValueError("通知尚未确认成功，保留已发布状态，下次仅补通知")
+        # 点击发布之前先落盘 submitting；中断后该状态只能走核验，不能直接再点。
+        progress["status"] = target
+        progress["events"].append({**event, "at": datetime.now(timezone.utc).isoformat()})
+        write_json(folder / "publish-progress.json", progress)
+        return progress
 
 
 def compose(old_path, now_path, old_year, new_year, target):
@@ -490,7 +589,7 @@ def make_preview(root, video, count, target):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block"])
+    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block", "publish-status", "publish-init", "publish-step"])
     parser.add_argument("--owner", help="仅在没有 CODEX_THREAD_ID 时指定真实任务 ID")
     parser.add_argument("--token", help="begin 或 takeover 返回的本轮执行凭证")
     parser.add_argument("--run")
@@ -504,7 +603,8 @@ def main():
     for action, names in {"plan": ["pair", "file"], "attempt": ["pair", "kind", "file"],
                           "record": ["attempt", "image", "file"], "fail": ["attempt", "reason"],
                           "replace": ["pair", "reason"], "finish": ["file"], "block": ["reason"],
-                          "takeover": ["run", "file"], "release": ["run", "reason"]}.items():
+                          "takeover": ["run", "file"], "release": ["run", "reason"],
+                          "publish-init": ["run", "file"], "publish-step": ["run", "file"]}.items():
         if args.action == action and any(getattr(args, n) is None for n in names):
             parser.error("该操作需要 " + ", ".join("--" + n for n in names))
     work = Workspace()
