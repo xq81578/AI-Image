@@ -9,6 +9,8 @@
   let backend = null, directory = null, folderName = '', restored = false, renderTimer = null, detailStamp = '';
   let recentIdeas = [], choosingFolder = false, starting = false, titlesBusy = false;
   const imageCache = new Map();
+  const jobRows = new Map();
+  let rowsBatchId = null;
   const emptyRow = '<div style="padding:42px 20px;text-align:center;color:var(--te-sub)">开始后，所有任务会在这里独立推进。</div>';
   function appError(message, code) { const e = new Error(message); e.code = code; return e; }
   function notice(message, error = false) { $('#batchNotice').textContent = message; $('#batchNotice').classList.toggle('error',error); }
@@ -245,26 +247,50 @@
     const jobs=batch?.jobs||[];
     return{total:jobs.length,saved:jobs.filter(j=>j.steps[5].status==='done').length,failed:jobs.filter(j=>j.steps.some(s=>s.status==='error')||j.persistenceError).length,paused:jobs.filter(j=>j.current<6&&!j.abandoned&&j.paused).length,abandoned:jobs.filter(j=>j.abandoned).length,active:jobs.filter(j=>j.steps.some(s=>s.status==='running')).length,pending:jobs.filter(j=>j.current<6&&!j.abandoned).length};
   }
-  function stageState(job,k){
+  function stageState(job,k,globalPaused){
     const step=job.steps[k],s=step.status;
     if(s==='done')return k===5?'✓ 已存':'✓ 完成';
-    if(s==='running')return k===4?'合成中':k===5?'保存中':'生成中';
+    if(s==='running')return job.paused||globalPaused?'收尾中':k===4?'合成中':k===5?'保存中':'生成中';
     if(job.abandoned)return '已放弃';
     if(s==='error')return '失败';
-    if(job.paused&&job.current===k)return '已暂停';
+    if((job.paused||globalPaused)&&job.current===k)return '已暂停';
     if(s==='retry')return '待重试';
     if(s==='queued')return '排队中';
     return '待上步';
   }
-  function stageHtml(job,k){
+  function renderStage(element,job,k,globalPaused){
     const step=job.steps[k],s=step.status;
+    const paused=job.paused||globalPaused;
     let note='';
-    if(s==='running')note=Models.formatTime((step.elapsedMs||0)+(step.startedAt?Date.now()-step.startedAt:0));
-    else if(s==='retry')note=job.paused||runner?.getSummary().pausedAll?'暂停重试':`${Math.max(0,Math.ceil(((step.retryAt||Date.now())-Date.now())/1000))}秒 · 第${Math.min(2,step.attempts)}次重试`;
-    else if(s==='queued')note=k<4?'等接口名额':'等本地处理';
+    if(s==='running')note=paused?'本步结束后暂停':Models.formatTime((step.elapsedMs||0)+(step.startedAt?Date.now()-step.startedAt:0));
+    else if(s==='retry')note=paused?'暂停重试':`${Math.max(0,Math.ceil(((step.retryAt||Date.now())-Date.now())/1000))}秒 · 第${Math.min(2,step.attempts)}次重试`;
+    else if(s==='queued'&&!paused)note=k<4?'等接口名额':'等本地处理';
     else if(s==='error')note=k===5?'合图保留':'可单独重试';
-    const kind={running:'active',queued:'queue'}[s]||s;
-    return `<div class="te-stage" data-kind="${kind}"><span class="te-mobile-label">${stageNames[k]}</span><span class="te-chip">${stageState(job,k)}</span>${note?`<small>${note}</small>`:''}</div>`;
+    element.dataset.kind={running:'active',queued:'queue'}[s]||s;
+    element.querySelector('.te-chip').textContent=stageState(job,k,globalPaused);
+    const noteElement=element.querySelector('small');noteElement.textContent=note;noteElement.hidden=!note;
+  }
+  function renderJobs(globalPaused){
+    const board=$('#batchJobs');
+    if(!batch){board.innerHTML=emptyRow;jobRows.clear();rowsBatchId=null;return;}
+    if(rowsBatchId!==batch.id){board.replaceChildren();jobRows.clear();rowsBatchId=batch.id;}
+    for(const job of batch.jobs){
+      let row=jobRows.get(job.id);
+      if(!row){
+        row=document.createElement('article');row.className='te-job';row.setAttribute('aria-label',`第${job.index+1}组 ${job.theme}`);
+        // 任务存续期间保留同一组按钮，进度刷新不能打断鼠标点击或键盘焦点。
+        row.innerHTML=`<div class="te-job-info"><div class="te-job-heading"><span class="te-num">${String(job.index+1).padStart(2,'0')}</span><strong>${esc(job.theme)}</strong></div><div class="te-job-meta">${job.oldYear} → ${job.newYear} · ${job.photoStyle==='bw'?'黑白':'彩照'}</div><div class="te-job-title"></div><div class="te-job-tools"><button type="button" class="te-quiet" data-action="detail" data-job="${esc(job.id)}">查看详情</button></div></div>${stageNames.map(name=>`<div class="te-stage"><span class="te-mobile-label">${name}</span><span class="te-chip"></span><small hidden></small></div>`).join('')}<div class="te-job-action"><button type="button" class="te-danger" data-action="retry" data-job="${esc(job.id)}" hidden></button><button type="button" data-action="pause" data-job="${esc(job.id)}">暂停</button><small data-job-result hidden></small></div>`;
+        board.append(row);jobRows.set(job.id,row);
+      }
+      row.dataset.selected=String(selectedId===job.id);
+      row.querySelector('.te-job-title').textContent=job.results.idea?.title||'正在构思这一组灵感';
+      row.querySelector('[data-action="detail"]').textContent=selectedId===job.id?'收起详情':'查看详情';
+      row.querySelectorAll('.te-stage').forEach((element,k)=>renderStage(element,job,k,globalPaused));
+      const running=job.steps.some(s=>s.status==='running'),failed=job.steps.some(s=>s.status==='error')||job.persistenceError,terminal=job.abandoned||job.current>=6;
+      const retry=row.querySelector('[data-action="retry"]');retry.hidden=terminal||!failed;retry.disabled=running||globalPaused;retry.textContent=`重试${stageNames[Math.min(job.current,5)]}`;
+      const pause=row.querySelector('[data-action="pause"]');pause.hidden=terminal;pause.disabled=globalPaused;pause.textContent=job.paused?'继续':'暂停';
+      const result=row.querySelector('[data-job-result]');result.hidden=!terminal;result.textContent=job.abandoned?'已放弃':'已保存';
+    }
   }
   function render(){
     if(!Core)return;
@@ -272,19 +298,15 @@
     $('#yearNote').textContent=`当前为 ${new Date().getFullYear()} / ${new Date().getFullYear()-1}`;
     document.querySelectorAll('[data-batch-setting]').forEach(el=>el.disabled=busy);
     $('#folderPath').textContent=folderName||'请选择保存合图的目录';$('#selectFolder').textContent=choosingFolder?'正在选择…':folderName?'更换保存目录':'选择保存目录';$('#selectFolder').disabled=choosingFolder||summary.active>0;
-    $('#startBatch').disabled=starting||choosingFolder||busy||!folderName||Boolean(dbFailure);$('#startBatch').textContent=busy?`正在处理 ${summary.total} 张合图`:batch?'一键生成新一批 →':`一键生成 ${$('#count').value} 张合图 →`;
+    $('#startBatch').disabled=starting||choosingFolder||busy||!folderName||Boolean(dbFailure);$('#startBatch').textContent=busy?(globalPaused?(summary.active?'正在暂停本批…':'本批已暂停'):summary.paused&&!summary.active?'任务已暂停':`正在处理 ${summary.total} 张合图`):batch?'一键生成新一批 →':`一键生成 ${$('#count').value} 张合图 →`;
     $('#startHint').textContent=dbFailure?'缓存不可用，请检查浏览器存储权限':!backend&&!directory?'双击「启动创作工具.vbs」使用本机自动保存':summary.pending&&summary.failed?'失败步骤可单独重试；已有结果保留':'每组只保存一张带时间文字的合图';
     $('#pauseBatch').disabled=!busy;$('#pauseBatch').textContent=globalPaused?'继续整批':'暂停整批';$('#openFolder').disabled=!folderName||!backend;
     $('#newBatch').hidden=!batch;$('#newBatch').disabled=summary.active>0;$('#newBatch').textContent=summary.pending?'放弃未完成并新建':'清空列表并新建';
     $('#batchCounts').innerHTML=batch?`已保存 <strong>${summary.saved} / ${summary.total} 张合图</strong>${summary.failed?` · ${summary.failed} 组失败`:''}${summary.paused?` · ${summary.paused} 组暂停`:''}${summary.abandoned?` · ${summary.abandoned} 组放弃`:''}`:'尚未开始';
-    $('#batchStatus').textContent=!batch?'准备就绪':summary.active?`${summary.active} 组正在处理`:globalPaused?'整批已暂停':summary.pending?'等待继续或处理失败步骤':summary.saved===summary.total?'全部已保存':'本批已结束';
+    $('#batchStatus').textContent=!batch?'准备就绪':globalPaused?(summary.active?`正在暂停 · 等待 ${summary.active} 个当前步骤结束`:'整批已暂停'):summary.active?`${summary.active} 组正在处理`:summary.paused?'已暂停，点击“继续”恢复':summary.pending?'等待继续或处理失败步骤':summary.saved===summary.total?'全部已保存':'本批已结束';
     $('#batchProgress').setAttribute('aria-valuemax',summary.total||Number($('#count').value));$('#batchProgress').setAttribute('aria-valuenow',summary.saved);$('#batchProgress>div').style.width=`${summary.total?summary.saved/summary.total*100:0}%`;
     $('#restoreNotice').hidden=!restored;$('#restoreText').textContent='已恢复上次任务及缓存。已完成的图片不会重新生成；中断步骤请手动重试。';$('#continueRestored').disabled=summary.active>0;
-    $('#batchJobs').innerHTML=!batch?emptyRow:batch.jobs.map(job=>{
-      const running=job.steps.some(s=>s.status==='running'),failed=job.steps.some(s=>s.status==='error')||job.persistenceError,done=job.current>=6;
-      const action=job.abandoned?'<small>已放弃</small>':done?'<small>已保存</small>':`${failed?`<button type="button" class="te-danger" data-action="retry" data-job="${esc(job.id)}" ${running||globalPaused?'disabled':''}>重试${stageNames[Math.min(job.current,5)]}</button>`:''}<button type="button" data-action="pause" data-job="${esc(job.id)}" ${globalPaused?'disabled':''}>${job.paused?(running?'取消暂停':'继续'):'暂停'}</button>`;
-      return `<article class="te-job" data-selected="${selectedId===job.id}" aria-label="第${job.index+1}组 ${esc(job.theme)}"><div class="te-job-info"><div class="te-job-heading"><span class="te-num">${String(job.index+1).padStart(2,'0')}</span><strong>${esc(job.theme)}</strong></div><div class="te-job-meta">${job.oldYear} → ${job.newYear} · ${job.photoStyle==='bw'?'黑白':'彩照'}</div><div class="te-job-title">${esc(job.results.idea?.title||'正在构思这一组灵感')}</div><div class="te-job-tools"><button type="button" class="te-quiet" data-action="detail" data-job="${esc(job.id)}">${selectedId===job.id?'收起详情':'查看详情'}</button></div></div>${stages.map((_,k)=>stageHtml(job,k)).join('')}<div class="te-job-action">${action}</div></article>`;
-    }).join('');
+    renderJobs(globalPaused);
     renderDetail();
   }
   function imageUrl(data){
@@ -375,7 +397,13 @@
       if(action==='detail'){selectedId=selectedId===job.id?null:job.id;await saveMeta();render();return;}
       if(action==='close-detail'){selectedId=null;render();return;}
       if(!job)return;
-      if(action==='pause'){if(job.paused)runner.resume(job.id);else runner.pause(job.id);await checkpoint(job);}
+      if(action==='pause'){
+        const resuming=job.paused,changed=resuming?runner.resume(job.id):runner.pause(job.id);
+        if(!changed){notice(`第 ${job.index+1} 组状态已更新，请查看最新进度。`);render();return;}
+        if(resuming)notice(`第 ${job.index+1} 组已继续。`);
+        else notice(`第 ${job.index+1} 组已请求暂停。${job.steps.some(s=>s.status==='running')?'当前步骤结束后停止，其他组继续。':'后续步骤已停止，其他组继续。'}`);
+        render();await checkpoint(job);
+      }
       if(action==='retry'){runner.resume(job.id);runner.retry(job.id);runner.start();restored=false;}
       if(action==='abandon'){runner.abandon(job.id);await checkpoint(job);}
       if(action==='image'){$('#pictureTitle').textContent=`${job.theme} · ${button.dataset.kind==='compose'?'对照合图':button.dataset.kind==='old'?job.oldYear:job.newYear}`;$('#pictureFull').src=imageUrl(job.results[button.dataset.kind]);$('#pictureDialog').showModal();return;}
