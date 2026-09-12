@@ -70,4 +70,4 @@ python server.py --no-browser --output-dir outputs\batch-qa --port 18765
 
 通知使用 Telegram 官方 Bot API，不使用模型 API。成功回执去重，结果不确定时不自动重发；通知失败不会导致重新出片。技能需由正在运行的 Codex 调用，不是常驻监控，不能在电脑关机或 Codex 完全无法运行时保证提醒。机器人回复尚未接入遥控或自动恢复。
 
-时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、含 AI 生成内容。当前视频号站点被浏览器站点安全策略禁止访问，采用用户已接受的手动发布方式；完全本机权限不能解除站点限制，不承诺自动登录或发表。详细流程见 `skills/time-echo-video/references/publishing.md`。
+时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、含 AI 生成内容。发布方式按当前任务要求和可用工具执行，发布状态按实际结果记录。详细流程见 `skills/time-echo-video/references/publishing.md`。
