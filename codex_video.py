@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
+import errno
 import hashlib
 import json
 import os
@@ -26,6 +27,12 @@ CHECKS = {"old": ["realism", "era", "anatomy", "composition", "no_text"],
 DEFAULTS = {"counts": [5, 6], "max_image_calls": 36, "attempts_per_image": 3,
             "candidates_per_pair": 3, "keep_images": False,
             "output_dir": "outputs/codex-time-echo"}
+
+
+class ExecutionBusy(ValueError):
+    def __init__(self, execution, message="该批次已有执行者；只查看状态，不修改进度"):
+        super().__init__(message)
+        self.execution = execution
 
 
 def read_json(path):
@@ -93,12 +100,17 @@ def exclusive(path):
             handle.write(b"0")
             handle.flush()
         handle.seek(0)
-        if os.name == "nt":
-            import msvcrt
-            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            if error.errno in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                raise ExecutionBusy(None, "项目正在执行本地命令；不修改进度，也不启动另一批") from None
+            raise
         try:
             yield
         finally:
@@ -125,6 +137,104 @@ class Workspace:
         if type(self.config["keep_images"]) is not bool:
             raise ValueError("keep_images 必须是布尔值")
         self.output.mkdir(parents=True, exist_ok=True)
+
+    def execution(self):
+        path = self.output / "execution.json"
+        return read_json(path) if path.exists() else None
+
+    def save_execution(self, execution):
+        execution["updated_at"] = datetime.now(timezone.utc).isoformat()
+        execution["revision"] = execution.get("revision", 0) + 1
+        write_json(self.output / "execution.json", execution)
+
+    def require_execution(self, owner, token, run_id):
+        execution = self.execution()
+        if (not execution or execution["state"] != "held"
+                or execution["owner_thread_id"] != owner
+                or execution["token"] != token or execution["run_id"] != run_id):
+            raise ExecutionBusy(execution, "未持有当前批次的执行凭证；先 begin，其他执行者不得修改进度")
+        return execution
+
+    def claim(self, owner, run_id, previous=None):
+        execution = {"owner_thread_id": owner, "run_id": run_id,
+                     "token": uuid.uuid4().hex, "state": "held", "revision": 0}
+        if previous:
+            execution["previous_execution"] = previous
+        self.save_execution(execution)
+        return execution
+
+    def takeover(self, owner, run_id, proof):
+        execution = self.execution()
+        if not execution or execution["state"] != "held" or execution["run_id"] != run_id:
+            raise ValueError("占用已变化，请重新 begin")
+        # 核验由 Codex 状态工具完成；脚本校验凭据和版本，不能靠超时猜测原任务已停止。
+        if not isinstance(proof, dict) or any(proof.get(k) != execution[k]
+                for k in ("owner_thread_id", "token", "revision")):
+            raise ExecutionBusy(execution, "占用记录已变化，必须重新核实原执行者状态")
+        if (proof.get("observed_status") not in ("idle", "completed", "interrupted")
+                or proof.get("source") not in ("wait_threads", "read_thread")
+                or not isinstance(proof.get("evidence"), str) or not proof["evidence"].strip()):
+            raise ExecutionBusy(execution, "尚未确认原任务停止；运行中、等待工具或状态未知时禁止接管")
+        try:
+            checked = datetime.fromisoformat(proof["checked_at"])
+            age = (datetime.now(timezone.utc) - checked).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("核验时间必须包含时区") from None
+        if not 0 <= age <= 60:
+            raise ExecutionBusy(execution, "状态核验已过期，必须重新核实原执行者状态")
+        folder, data = self.load(run_id)
+        previous = {**execution, "stop_check": proof}
+        # 只保留上一次占用，避免接管记录无限嵌套。
+        previous.pop("previous_execution", None)
+        claimed = self.claim(owner, run_id, previous)
+        return {"resumed": True, "folder": str(folder), **data, "execution": claimed}
+
+    def execute(self, action, *, owner=None, token=None, run_id=None, pair=None,
+                kind=None, attempt=None, file=None, image=None, reason=None):
+        """技能命令唯一入口：在同一文件锁内校验占用，再读写批次。"""
+        with exclusive(self.output / ".lock"):
+            if action == "history":
+                return self.history()
+            if action == "ownership":
+                return {"execution": self.execution()}
+            if action == "status":
+                return {**self.load(run_id)[1], "execution": self.execution()}
+            if not isinstance(owner, str) or not owner.strip():
+                raise ValueError("缺少执行者身份；在 Codex 任务中运行，或通过 --owner 指定真实任务 ID")
+            if action == "begin":
+                execution = self.execution()
+                if execution and execution["state"] == "held":
+                    if execution["owner_thread_id"] != owner or execution["token"] != token:
+                        raise ExecutionBusy(execution)
+                    folder, data = self.load(execution["run_id"])
+                    self.save_execution(execution)
+                    return {"resumed": True, "folder": str(folder), **data, "execution": execution}
+                result = self.begin()
+                return {**result, "execution": self.claim(owner, result["run_id"])}
+            if action == "takeover":
+                return self.takeover(owner, run_id, read_json(file))
+            execution = self.require_execution(owner, token, run_id)
+            folder, data = self.load(run_id)
+            if action == "release":
+                if any(a["status"] == "pending" for p in data["pairs"] for a in p["attempts"]):
+                    raise ValueError("仍有未登记的生图请求；确认结果或中断并登记后才能释放")
+                execution.update(state="released", release_reason=reason)
+                self.save_execution(execution)
+                return {"status": "released", "run_id": run_id}
+            # 开始操作就递增版本，失败的尝试也使先前的接管核验失效。
+            self.save_execution(execution)
+            if action == "plan": return self.plan(folder, data, pair, read_json(file))
+            if action == "attempt": return self.attempt(folder, data, pair, kind, Path(file).read_text(encoding="utf-8-sig"))
+            if action == "record": return self.record(folder, data, attempt, image, read_json(file))
+            if action == "fail": return self.fail(folder, data, attempt, reason)
+            if action == "replace": return self.replace(folder, data, pair, reason)
+            if action == "render": return self.render(folder, data)
+            if action == "finish": return self.finish(folder, data, read_json(file))
+            if action == "block":
+                data.update(status="blocked", error=reason)
+                self.save(folder, data)
+                return {"status": "blocked", "reason": reason}
+            raise ValueError("未知操作")
 
     def load(self, run_id):
         if not run_id or any(c not in "0123456789abcdefghijklmnopqrstuvwxyz_-" for c in run_id):
@@ -380,7 +490,9 @@ def make_preview(root, video, count, target):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["begin", "history", "status", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block"])
+    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block"])
+    parser.add_argument("--owner", help="仅在没有 CODEX_THREAD_ID 时指定真实任务 ID")
+    parser.add_argument("--token", help="begin 或 takeover 返回的本轮执行凭证")
     parser.add_argument("--run")
     parser.add_argument("--pair", type=int)
     parser.add_argument("--kind", choices=["old", "now"])
@@ -391,29 +503,17 @@ def main():
     args = parser.parse_args()
     for action, names in {"plan": ["pair", "file"], "attempt": ["pair", "kind", "file"],
                           "record": ["attempt", "image", "file"], "fail": ["attempt", "reason"],
-                          "replace": ["pair", "reason"], "finish": ["file"], "block": ["reason"]}.items():
+                          "replace": ["pair", "reason"], "finish": ["file"], "block": ["reason"],
+                          "takeover": ["run", "file"], "release": ["run", "reason"]}.items():
         if args.action == action and any(getattr(args, n) is None for n in names):
             parser.error("该操作需要 " + ", ".join("--" + n for n in names))
     work = Workspace()
-    with exclusive(work.output / ".lock"):
-        if args.action == "begin":
-            result = work.begin()
-        elif args.action == "history":
-            result = work.history()
-        else:
-            folder, data = work.load(args.run)
-            if args.action == "status": result = data
-            elif args.action == "plan": result = work.plan(folder, data, args.pair, read_json(args.file))
-            elif args.action == "attempt": result = work.attempt(folder, data, args.pair, args.kind, args.file.read_text(encoding="utf-8-sig"))
-            elif args.action == "record": result = work.record(folder, data, args.attempt, args.image, read_json(args.file))
-            elif args.action == "fail": result = work.fail(folder, data, args.attempt, args.reason)
-            elif args.action == "replace": result = work.replace(folder, data, args.pair, args.reason)
-            elif args.action == "render": result = work.render(folder, data)
-            elif args.action == "finish": result = work.finish(folder, data, read_json(args.file))
-            else:
-                data.update(status="blocked", error=args.reason)
-                work.save(folder, data)
-                result = {"status": "blocked", "reason": args.reason}
+    owner = os.environ.get("CODEX_THREAD_ID") or args.owner
+    if args.owner and owner != args.owner:
+        raise ValueError("--owner 与当前 Codex 任务不一致，不得冒用其他执行者身份")
+    result = work.execute(args.action, owner=owner, token=args.token, run_id=args.run,
+                          pair=args.pair, kind=args.kind, attempt=args.attempt,
+                          file=args.file, image=args.image, reason=args.reason)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
@@ -422,6 +522,9 @@ if __name__ == "__main__":
     sys.stderr.reconfigure(encoding="utf-8")
     try:
         main()
+    except ExecutionBusy as error:
+        print(json.dumps({"status": "busy", "error": str(error), "execution": error.execution}, ensure_ascii=False), file=sys.stderr)
+        sys.exit(2)
     except (ValueError, OSError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False), file=sys.stderr)
         sys.exit(1)
