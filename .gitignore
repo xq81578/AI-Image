@@ -1,3 +1,6 @@
 __pycache__/
 /workspace-test-dir/
 /outputs/batch-qa/
+/.video-cache/
+/tools/
+/bgm/*

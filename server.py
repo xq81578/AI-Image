@@ -29,9 +29,11 @@ import tempfile
 import threading
 from typing import Any, Callable, Optional
 import warnings
-from urllib.parse import unquote, urljoin, urlsplit
+from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 from urllib.request import Request, build_opener, ProxyHandler
 import webbrowser
+
+from video_service import VideoService, VideoServiceError
 
 try:
     from PIL import Image
@@ -56,6 +58,7 @@ STATIC_FILES = {
     "batch-core.js": "text/javascript; charset=utf-8",
     "batch-app.js": "text/javascript; charset=utf-8",
     "batch-prompts.js": "text/javascript; charset=utf-8",
+    "batch-video.js": "text/javascript; charset=utf-8",
     "batch-app.css": "text/css; charset=utf-8",
 }
 
@@ -97,8 +100,9 @@ class ApiError(Exception):
 
 
 class DialogRequest:
-    def __init__(self, action: str):
+    def __init__(self, action: str, folder: Optional[Path] = None):
         self.action = action
+        self.folder = folder
         self.event = threading.Event()
         self.result: Any = None
         self.error: Optional[BaseException] = None
@@ -110,8 +114,8 @@ class MainThreadDispatcher:
     def __init__(self):
         self._requests: queue.Queue[DialogRequest] = queue.Queue()
 
-    def submit(self, action: str, timeout: float = 300.0) -> Any:
-        request = DialogRequest(action)
+    def submit(self, action: str, timeout: float = 300.0, folder: Optional[Path] = None) -> Any:
+        request = DialogRequest(action, folder)
         self._requests.put(request)
         if not request.event.wait(timeout):
             raise ApiError("等待本机窗口响应超时", "ui_timeout", 504)
@@ -438,6 +442,7 @@ class LocalApp:
         *,
         static_root: Optional[os.PathLike[str] | str] = None,
         output_dir: Optional[os.PathLike[str] | str] = None,
+        video_cache_dir: Optional[os.PathLike[str] | str] = None,
         token: Optional[str] = None,
         folder_selector: Optional[Callable[[Optional[Path]], Optional[str | os.PathLike[str]]]] = None,
         folder_opener: Optional[Callable[[Path], None]] = None,
@@ -457,6 +462,18 @@ class LocalApp:
             if not folder.is_dir():
                 raise ValueError("output directory is not a directory")
             self._folder = folder
+        self.video = VideoService(
+            project_root=self.static_root,
+            output_dir_provider=lambda: self.folder,
+            cache_root=video_cache_dir,
+            image_saver=lambda filename, data, request_id, folder: self.save_png(
+                filename,
+                data,
+                request_id,
+                folder_override=folder,
+            ),
+            recover_running=False,
+        )
 
     @property
     def folder(self) -> Optional[Path]:
@@ -493,7 +510,7 @@ class LocalApp:
                 root.attributes("-topmost", True)
                 selected = filedialog.askdirectory(
                     parent=root,
-                    title="选择图片保存目录",
+                    title="选择成品视频保存目录",
                     initialdir=self.folder_string or str(Path.home()),
                     mustexist=True,
                 )
@@ -503,15 +520,19 @@ class LocalApp:
             return None
         return self.set_folder(selected)
 
-    def _open_folder_on_main_thread(self) -> None:
-        folder = self.folder
+    def _open_folder_on_main_thread(self, folder_override: Optional[Path] = None) -> Path:
+        folder = folder_override or self.folder
         if folder is None:
-            raise ApiError("请先选择图片保存目录", "folder_not_selected", 409)
+            raise ApiError("请先选择保存目录", "folder_not_selected", 409)
+        try:
+            folder = Path(folder).expanduser().resolve()
+        except OSError as exc:
+            raise ApiError("保存目录不可用", "invalid_folder", 409) from exc
         if not folder.is_dir():
             raise ApiError("保存目录不可用", "invalid_folder", 409)
         if self.folder_opener is not None:
             self.folder_opener(folder)
-            return
+            return folder
         try:
             if os.name == "nt":
                 os.startfile(os.fspath(folder))  # type: ignore[attr-defined]
@@ -521,6 +542,7 @@ class LocalApp:
                 subprocess.Popen(["xdg-open", os.fspath(folder)], close_fds=True)
         except OSError as exc:
             raise ApiError("无法打开保存目录", "open_folder_failed", 500) from exc
+        return folder
 
     def process_main_thread_tasks(self, limit: int = 8) -> int:
         if threading.current_thread() is not threading.main_thread():
@@ -538,8 +560,8 @@ class LocalApp:
                         **({} if selected is not None else {"cancelled": True}),
                     }
                 elif request.action == "open_folder":
-                    self._open_folder_on_main_thread()
-                    request.result = {"folder": self.folder_string}
+                    selected_folder = self._open_folder_on_main_thread(request.folder)
+                    request.result = {"folder": str(selected_folder)}
                 else:
                     raise ApiError("未知窗口操作", "unknown_ui_action", 500)
             except BaseException as exc:  # ensure the waiting HTTP request is released
@@ -553,6 +575,11 @@ class LocalApp:
         if host not in {DEFAULT_HOST, "localhost"}:
             raise ValueError("本机服务只能绑定回环地址")
         server = LocalHTTPServer((host, port), RequestHandler)
+        try:
+            self.video.recover_running_tasks()
+        except Exception:
+            server.server_close()
+            raise
         server.daemon_threads = True
         server.app = self  # type: ignore[attr-defined]
         return server
@@ -562,8 +589,15 @@ class LocalApp:
             self.process_main_thread_tasks()
             stop_event.wait(0.05)
 
-    def save_png(self, filename: str, data: bytes, request_id: Optional[str] = None) -> dict[str, str]:
-        folder = self.folder
+    def save_png(
+        self,
+        filename: str,
+        data: bytes,
+        request_id: Optional[str] = None,
+        *,
+        folder_override: Optional[Path] = None,
+    ) -> dict[str, str]:
+        folder = folder_override or self.folder
         if folder is None:
             raise ApiError("请先选择图片保存目录", "folder_not_selected", 409)
         try:
@@ -804,8 +838,20 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self._authorize()
                 self._send_json({"folder": self.app.folder_string, "app": APP_NAME})
                 return
+            if path == "/api/video/environment":
+                self._authorize()
+                self._send_json(self.app.video.environment())
+                return
+            if path == "/api/video/status":
+                self._authorize()
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                batch_id = query.get("batchId", [None])[0]
+                self._send_json(self.app.video.status(batch_id))
+                return
             self._authorize()
             raise ApiError("API 不存在", "not_found", 404)
+        except VideoServiceError as error:
+            self._error(ApiError(error.message, error.code, error.status))
         except ApiError as error:
             self._error(error)
         except Exception:
@@ -848,6 +894,49 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 result = self.app.dispatcher.submit("open_folder")
                 self._send_json(result)
                 return
+            if path == "/api/video/open-folder":
+                payload = self._read_json(max_bytes=16 * 1024)
+                folder = self.app.video.output_folder(payload.get("batchId"))
+                result = self.app.dispatcher.submit("open_folder", folder=folder)
+                self._send_json(result)
+                return
+            if path == "/api/video/prepare":
+                payload = self._read_json(max_bytes=64 * 1024)
+                self._send_json(self.app.video.prepare(
+                    batch_id=payload.get("batchId"),
+                    job_ids=payload.get("jobIds"),
+                    filename=payload.get("filename"),
+                    save_images=payload.get("saveImages"),
+                ))
+                return
+            if path == "/api/video/frame":
+                payload = self._read_json()
+                self._send_json(self.app.video.frame(
+                    batch_id=payload.get("batchId"),
+                    job_id=payload.get("jobId"),
+                    filename=payload.get("filename"),
+                    data_url=payload.get("dataUrl"),
+                ))
+                return
+            if path == "/api/video/start":
+                payload = self._read_json(max_bytes=16 * 1024)
+                self._send_json(self.app.video.start(batch_id=payload.get("batchId")))
+                return
+            if path == "/api/video/cancel":
+                payload = self._read_json(max_bytes=16 * 1024)
+                self._send_json(self.app.video.cancel(batch_id=payload.get("batchId")))
+                return
+            if path == "/api/video/discard":
+                payload = self._read_json(max_bytes=16 * 1024)
+                self._send_json(self.app.video.discard(batch_id=payload.get("batchId")))
+                return
+            if path == "/api/video/skip":
+                payload = self._read_json(max_bytes=16 * 1024)
+                self._send_json(self.app.video.skip(
+                    batch_id=payload.get("batchId"),
+                    job_id=payload.get("jobId"),
+                ))
+                return
             if path == "/api/image":
                 payload = self._read_json(max_bytes=64 * 1024)
                 data, mime = _download_image(payload.get("url"))
@@ -864,6 +953,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json(self.app.save_png(filename, data, request_id))
                 return
             raise ApiError("API 不存在", "not_found", 404)
+        except VideoServiceError as error:
+            self._error(ApiError(error.message, error.code, error.status))
         except ApiError as error:
             self._error(error)
         except Exception:
@@ -967,6 +1058,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         _status_print("本机服务运行失败。", error=True)
         exit_code = 1
     finally:
+        app.video.close()
         stop_event.set()
         httpd.shutdown()
         httpd.server_close()

@@ -22,7 +22,10 @@ class LocalSaveServerTests(unittest.TestCase):
         self.output_dir = test_root / self._testMethodName
         shutil.rmtree(self.output_dir, ignore_errors=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.app = server.LocalApp(output_dir=self.output_dir)
+        self.app = server.LocalApp(
+            output_dir=self.output_dir,
+            video_cache_dir=self.output_dir / ".video-cache",
+        )
         self.httpd = self.app.create_http_server(port=0)
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

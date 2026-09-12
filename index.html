@@ -84,7 +84,8 @@
       <header class="te-head"><div class="te-brand"><div class="te-logo" aria-hidden="true">↔</div><div><h1>时光对照</h1><small>过去的烟火气 · 如今的空落感</small></div></div><div class="te-models"><small id="keyStatus"></small><button id="toggleConfig" type="button">模型配置</button></div></header>
       <div id="restoreNotice" class="te-resume-note" hidden><span id="restoreText"></span><button id="continueRestored" type="button">继续未完成任务</button></div>
       <div class="te-workspace"><form id="batchForm" class="te-settings"><h2>01　开始前设置</h2>
-        <div class="te-folder"><strong>保存目录</strong><div id="folderPath" class="te-folder-path">请选择保存目录</div><button id="selectFolder" type="button">选择保存目录</button></div>
+        <div class="te-folder"><strong>成品视频目录</strong><div id="folderPath" class="te-folder-path">请选择保存目录</div><button id="selectFolder" type="button">选择保存目录</button></div>
+        <label class="te-save-option"><input id="saveImages" type="checkbox" data-batch-setting><span>同时保存合图<small id="saveImagesHint">仅保留视频，成功后清理图片缓存</small></span></label>
         <div class="te-row"><label>目标合图数量<input id="count" type="number" min="1" max="12" value="6" data-batch-setting></label><label>发布平台<select id="platform" data-batch-setting><option>小红书</option><option>抖音</option><option>视频号</option><option>公众号</option></select></label></div>
         <label class="te-label-block">补充方向 · 可选<textarea id="brief" rows="3" data-batch-setting placeholder="例如：童年的课间、小镇上的老店"></textarea></label>
         <div class="te-rules"><div class="te-rule"><strong>主题随机 · 场景自由发散</strong><small>按数量抽取主题，同批优先不重复</small></div><div class="te-rule"><strong>旧年份从 2000 年起</strong><small>相隔 10 年以上为主，少量近年</small></div>
@@ -92,10 +93,12 @@
         <label class="te-label-block">生图服务<select id="providerSelect" data-batch-setting><option value="mock">本地流程演示（不调用模型）</option><option value="beihai">北海 AI</option><option value="openai">OpenAI</option><option value="gemini">Gemini</option></select></label>
         <details class="te-advanced-list"><summary>照片与文字规则</summary><p>手持旧照，彩照为主、少量黑白；泛黄、污渍和褪色符合保存年限。现在图直接拍摄，无手、无相纸。</p><p>旧图在上、新图在下，白字黑边仅标注年份。合成尺寸 1080×1920，主体完整保留。</p></details>
         <details class="te-advanced-list"><summary>并发与重试</summary><div class="te-row"><label>文本并发<input id="textLimit" type="number" min="1" max="12" value="6" data-batch-setting></label><label>生图并发<input id="imageLimit" type="number" min="1" max="6" value="2" data-batch-setting></label></div><p>临时错误自动重试最多 2 次，其余错误可手动处理；其他组正常继续。</p></details></div>
-        <button id="startBatch" class="te-primary te-start" type="submit" disabled>一键生成 6 张合图 →</button><div class="te-setting-foot" id="startHint">选好目录，每张合图完成后自动保存</div><div class="te-output-tools"><button id="newBatch" class="te-quiet" type="button" hidden>结束本批并新建</button></div>
-      </form><section class="te-main" aria-label="批量任务进度"><div class="te-batch-head"><div><h2>02　各组独立推进</h2><small>随机选题 → 新旧照片 → 合成加字 → 保存</small></div><div class="te-batch-actions"><button id="pauseBatch" type="button" disabled>暂停整批</button><button id="openFolder" type="button" disabled>打开保存目录</button></div></div>
-      <div class="te-progress" id="batchProgress" role="progressbar" aria-label="已保存合图" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><div></div></div><div class="te-summary" aria-live="polite"><span id="batchCounts">尚未开始</span><span id="batchStatus">准备就绪</span></div>
-      <div class="te-board"><div class="te-columns" aria-hidden="true"><span>任务 / 年份</span><span>灵感</span><span>提示词</span><span>旧照</span><span>今照</span><span>合成</span><span>保存</span><span>单组操作</span></div><div id="batchJobs"><div style="padding:42px 20px;text-align:center;color:var(--te-sub)">开始后，所有任务会在这里独立推进。</div></div><div class="te-board-footer"><span>同组今照引用旧照</span><span>合成、加字在本地完成</span><span>写入成功才计入已保存</span></div></div>
+        <div class="te-video-rule">每张合图 4 秒 · 淡入淡出<br>整批生成 1 条竖屏视频 · BGM 随机</div>
+        <button id="startBatch" class="te-primary te-start" type="submit" disabled>一键生成视频 →</button><div class="te-setting-foot" id="startHint">全部合图完成后，自动配乐并保存视频</div><div class="te-output-tools"><button id="newBatch" class="te-quiet" type="button" hidden>结束本批并新建</button></div>
+      </form><section class="te-main" aria-label="批量任务进度"><div class="te-batch-head"><div><h2>02　各组独立推进</h2><small>随机选题 → 新旧照片 → 合成加字 → 素材就绪</small></div><div class="te-batch-actions"><button id="pauseBatch" type="button" disabled>暂停整批</button><button id="openFolder" type="button" disabled>打开成品目录</button></div></div>
+      <div class="te-progress" id="batchProgress" role="progressbar" aria-label="已就绪合图" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><div></div></div><div class="te-summary" aria-live="polite"><span id="batchCounts">尚未开始</span><span id="batchStatus">准备就绪</span></div>
+      <div class="te-board"><div class="te-columns" aria-hidden="true"><span>任务 / 年份</span><span>灵感</span><span>提示词</span><span>旧照</span><span>今照</span><span>合成</span><span>就绪</span><span>单组操作</span></div><div id="batchJobs"><div style="padding:42px 20px;text-align:center;color:var(--te-sub)">开始后，所有任务会在这里独立推进。</div></div><div class="te-board-footer"><span>同组今照引用旧照</span><span>合成、加字在本地完成</span><span>全部就绪后自动制作视频</span></div></div>
+      <section id="videoPanel" class="te-video-panel" aria-label="成品视频进度"><div class="te-video-heading"><h2>03　配乐成片</h2><span id="videoStatus" role="status">等待合图</span></div><p id="videoInfo">合图按组编号播放，每张 4 秒，自动从 bgm 目录随机选曲。</p><div id="videoProgress" class="te-progress" role="progressbar" aria-label="视频制作进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div></div></div><p id="videoFile" class="te-video-file" hidden></p><p id="videoError" class="te-error-detail" role="status" hidden></p><div class="te-output-tools"><button id="retryVideo" type="button" hidden>重试视频制作</button><button id="refreshVideo" type="button" hidden>重新检查视频状态</button><button id="cancelVideo" type="button" hidden>停止视频制作</button><button id="videoOpenFolder" type="button" hidden>打开成品目录</button></div></section>
       <div id="batchNotice" class="te-notice" role="status" aria-live="polite"></div><section id="jobDetail" class="te-detail" hidden aria-label="任务详情"></section></section></div>
     </main>
           <dialog id="configPanel"><header class="modal-head"><h2>模型配置</h2><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body">
@@ -186,7 +189,7 @@
             </label>
             <div data-image-provider="mock" class="mock-config-note">
               <strong>本地流程演示</strong>
-              <p>使用带演示标识的图形验证批量流程和保存，不调用模型。生成真实照片请选择北海 AI、OpenAI 或 Gemini。</p>
+              <p>使用带演示标识的图形验证批量流程，并制作真实 MP4，不调用模型。生成真实照片请选择北海 AI、OpenAI 或 Gemini。</p>
             </div>
             <div data-image-provider="beihai" class="hidden">
               <label>API Key<input id="beihaiImageKey" type="password" autocomplete="off" placeholder="留空则使用文本模型的北海 Key"></label>
@@ -248,7 +251,7 @@
       </div></dialog>
 
     <dialog id="pictureDialog"><header class="modal-head"><h2 id="pictureTitle">图片预览</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><img id="pictureFull" class="photo-enlarged" alt="完整图片"></div></dialog>
-    <dialog id="helpDialog"><header class="modal-head"><h2>本机保存服务</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><p id="appHelp">双击项目目录中的「启动创作工具.vbs」，即可选择电脑目录并自动保存。若浏览器支持直接选择目录，也可以继续使用当前页面。</p></div></dialog>
+    <dialog id="helpDialog"><header class="modal-head"><h2>本机创作服务</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><p id="appHelp">双击项目目录中的「启动创作工具.vbs」，连接本机服务后选择成品目录。视频在本机由 FFmpeg 制作，背景音乐从项目 bgm 目录随机选取。更新本机服务代码后，需要重启服务。</p></div></dialog>
     <dialog id="titlesDialog"><header class="modal-head"><h2>短视频标题</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><div id="titleStatus" role="status"></div><div id="titles"></div></div></dialog>
     <div id="toast" class="toast hidden" role="status"></div>
     <script>
@@ -655,6 +658,7 @@
     </script>
     <script src="batch-core.js"></script>
     <script src="batch-prompts.js"></script>
+    <script src="batch-video.js"></script>
     <script src="batch-app.js"></script>
   </body>
 </html>
