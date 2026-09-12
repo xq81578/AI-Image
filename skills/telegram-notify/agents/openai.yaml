@@ -1,0 +1,4 @@
+interface:
+  display_name: "Telegram 通知"
+  short_description: "给本人飞机私聊发送任务卡点、完成提醒、图片和成品视频，并记录发送回执"
+  default_prompt: "使用 $telegram-notify 检查通知连接，将当前任务中已授权的结果或需要处理的卡点发到我的 Telegram。"

@@ -63,3 +63,11 @@ python server.py --no-browser --output-dir outputs\batch-qa --port 18765
 ```
 
 打开 `http://127.0.0.1:18765`，选择“本地流程演示”即可验证自动配乐成片和图片保存开关。该测试地址与日常文件页面的缓存、模型配置彼此独立。
+
+## Telegram 通知与视频号交付
+
+新增独立技能 `skills/telegram-notify`，个人安装位置为 `C:/Users/Administrator/.codex/skills/telegram-notify`。通过专用 Telegram 机器人给本人发送任务完成、卡点、图片和 MP4，可供其他已授权任务复用。首次使用需在 @BotFather 创建机器人，运行技能脚本的 `setup-gui` 在本机输入 Token，再通过 `bind-start` 链接和 `bind-poll` 绑定本人私聊。Token 使用 Windows DPAPI 加密保存在 `%LOCALAPPDATA%/CodexNotifications/telegram`，不写入仓库或聊天记录。
+
+通知使用 Telegram 官方 Bot API，不使用模型 API。成功回执去重，结果不确定时不自动重发；通知失败不会导致重新出片。技能需由正在运行的 Codex 调用，不是常驻监控，不能在电脑关机或 Codex 完全无法运行时保证提醒。机器人回复尚未接入遥控或自动恢复。
+
+时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、含 AI 生成内容。当前视频号站点被浏览器站点安全策略禁止访问，采用用户已接受的手动发布方式；完全本机权限不能解除站点限制，不承诺自动登录或发表。详细流程见 `skills/time-echo-video/references/publishing.md`。
