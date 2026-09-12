@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import threading
 import unittest
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -106,6 +107,23 @@ class LocalSaveServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(headers["access-control-allow-origin"], "null")
         self.assertEqual(json.loads(body)["token"], token)
+
+    def test_repeated_start_reuses_existing_service(self) -> None:
+        with self.assertRaises(OSError):
+            duplicate = server.LocalApp().create_http_server(port=self.port)
+            duplicate.server_close()
+
+        with patch.object(server, "_open_browser") as open_browser:
+            for _ in range(3):
+                self.assertEqual(server.main(["--port", str(self.port)]), 0)
+            self.assertEqual(open_browser.call_count, 3)
+            for call in open_browser.call_args_list:
+                self.assertEqual(call.args[1], self.port)
+                self.assertEqual(call.args[2], self.app.token)
+
+        status, _, body = self.request("GET", "/api/health", token=self.app.token)
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["folder"], str(self.output_dir.resolve()))
 
     def test_save_is_png_atomic_and_request_idempotent(self) -> None:
         _, _, session_body = self.request("GET", "/api/session")

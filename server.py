@@ -81,6 +81,11 @@ _WINDOWS_RESERVED_NAMES = {
 }
 
 
+class LocalHTTPServer(http.server.ThreadingHTTPServer):
+    # Windows 上复用地址会允许多个进程监听同一端口，绕过已有实例检测。
+    allow_reuse_address = False
+
+
 class ApiError(Exception):
     """一个可安全返回给前端的 API 错误。"""
 
@@ -547,7 +552,7 @@ class LocalApp:
     def create_http_server(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> http.server.ThreadingHTTPServer:
         if host not in {DEFAULT_HOST, "localhost"}:
             raise ValueError("本机服务只能绑定回环地址")
-        server = http.server.ThreadingHTTPServer((host, port), RequestHandler)
+        server = LocalHTTPServer((host, port), RequestHandler)
         server.daemon_threads = True
         server.app = self  # type: ignore[attr-defined]
         return server
