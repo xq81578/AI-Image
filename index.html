@@ -75,58 +75,28 @@
 
       .export-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.export-actions a{border:1px solid var(--line);border-radius:8px;padding:8px 12px}
     </style>
+      <link rel="stylesheet" href="batch-app.css">
   </head>
 
   <body>
-    <main class="app">
-      <header class="header"><div class="brand"><div class="logo">↔</div><h1>时光对照</h1></div><div class="header-right"><span id="keyStatus" class="model-summary"></span><button id="toggleConfig" type="button">⚙ 模型配置</button></div></header>
-      <nav class="journey" aria-label="创作流程">
-        <div class="journey-step done"><span class="step-disc">01</span><div><h3>创作方向</h3><small>2000 年前后 → 2026 年</small></div></div>
-        <div class="journey-step" data-step="ideas"><span class="step-disc">02</span><div><h3>选择灵感</h3><small>待开始</small></div></div>
-        <div class="journey-step" data-step="prompts"><span class="step-disc">03</span><div><h3>确认提示词</h3><small>待开始</small></div></div>
-        <div class="journey-step" data-step="images"><span class="step-disc">04</span><div><h3>对照成片</h3><small>待开始</small></div></div>
-      </nav>
-      <section class="workspace">
-        <form id="ideaForm" class="stage direction"><header class="stage-head"><div class="stage-title"><span class="stage-num">01</span><h2>创作方向</h2></div></header><div class="stage-body"><label>补充方向<textarea id="brief" rows="4" placeholder="写一个地点或一段回忆"></textarea></label><div class="fields"><label>主题<select id="theme">
-                <option>农村老屋</option>
-                <option>老家院子</option>
-                <option>村庄变迁</option>
-                <option>荒废院落</option>
-                <option>亲情</option>
-                <option>校园</option>
-                <option>老街</option>
-                <option>爱情</option>
-                <option>宠物</option>
-                <option>城市变迁</option>
-                <option>老物件</option>
-              </select></label><label>情绪<select id="emotion">
-                <option>怀旧</option>
-                <option>温暖</option>
-                <option>遗憾</option>
-                <option>治愈</option>
-                <option>孤独</option>
-                <option>释然</option>
-              </select></label><label>平台<select id="platform">
-                <option>小红书</option>
-                <option>抖音</option>
-                <option>视频号</option>
-                <option>公众号</option>
-              </select></label><label>数量<input id="count" type="number" min="1" max="12" value="6"></label></div></div><footer class="stage-foot"><button id="ideaButton" class="primary" type="submit">生成灵感 →</button></footer></form>
-        <section class="stage" id="ideasStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">02</span><h2>选择灵感</h2></div><span class="tag" id="ideaCount">0 个</span></header><div class="stage-body"><div id="ideaStatus" class="status" role="status" aria-live="polite"></div><div id="ideas" class="idea-list"><div class="empty"><span class="empty-icon">02</span><p>等待生成灵感</p></div></div><div class="idea-tools"><button type="button" id="ideaDetailButton" class="quiet" disabled>灵感详情 ↗</button><button type="button" id="openTitles" class="quiet">短视频标题 ↗</button></div></div><footer class="stage-foot"><button id="generatePromptButton" type="button" class="primary" disabled>生成作图提示词 →</button></footer></section>
-        <section class="stage" id="promptsStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">03</span><h2>确认提示词</h2></div><span class="tag" id="promptBadge">待生成</span></header><div class="prompt-content"><div id="promptStatus" class="status" role="status" aria-live="polite"></div><div class="stage-body has-prompts" id="promptsBody"><button type="button" class="prompt-card" data-editor="decadePrompt"><div class="prompt-top"><h3><i class="prompt-dot"></i>2000 年前后</h3><span class="tag">旧照</span></div><p id="decadePreview">等待生成提示词</p><span class="expand">编辑 ↗</span></button><button type="button" class="prompt-card" data-editor="nowPrompt"><div class="prompt-top"><h3><i class="prompt-dot now"></i>2026 年</h3><span class="tag green">现在</span></div><p id="nowPreview">等待生成提示词</p><span class="expand">编辑 ↗</span></button></div></div><footer class="stage-foot"><div id="promptControls"><div class="image-options"><label>生图模型<select id="providerSelect">
-                <option value="mock">Mock 流程预览</option>
-                <option value="beihai">北海 AI · GPT Image 2</option>
-                <option value="openai">OpenAI gpt-image</option>
-                <option value="gemini">Gemini Nano Banana</option>
-              </select></label><label>比例<select id="ratio">
-                <option>4:5</option>
-                <option>1:1</option>
-                <option>9:16</option>
-                <option>16:9</option>
-              </select></label></div><div class="prompt-actions"><button id="promptButton" type="button" class="quiet" disabled>↻ 重写提示词</button><button id="copyPromptButton" type="button" class="quiet" disabled>复制合图提示词</button></div></div><button id="imageButton" type="button" class="primary" disabled>生成两张对照图 →</button></footer></section>
-        <section class="stage" id="imagesStage"><header class="stage-head"><div class="stage-title"><span class="stage-num">04</span><h2>对照成片</h2></div><span class="tag" id="resultStatus">待生成</span></header><div class="stage-body"><div id="imageStatus" class="status" role="status" aria-live="polite"></div><div class="image-pair"><figure><button type="button" class="photo" data-photo="decadeImage" aria-label="放大旧照片" disabled><span class="photo-surface"><img id="decadeImage" alt="2000年前后旧照片"><span class="photo-placeholder" id="decadePlaceholder">等待生成</span><span class="photo-label">2000 年前后</span><span class="zoom-mark">↗</span></span></button><figcaption><span id="decadeTime">旧照</span><a id="downloadDecade" class="hidden" download="旧照片.png">下载</a></figcaption></figure><figure><button type="button" class="photo" data-photo="nowImage" aria-label="放大现在照片" disabled><span class="photo-surface"><img id="nowImage" alt="2026年现在照片"><span class="photo-placeholder" id="nowPlaceholder">等待旧照</span><span class="photo-label">2026 年</span><span class="zoom-mark">↗</span></span></button><figcaption><span id="nowTime">现在</span><a id="downloadNow" class="hidden" download="现在照片.png">下载</a></figcaption></figure></div><button id="retryImageButton" type="button" class="hidden retry-button">重试第二张 →</button><div class="caption-box"><div class="prompt-top"><h3>配文</h3><button type="button" class="quiet" data-editor="caption">编辑 ↗</button></div><p id="captionPreview">暂无配文</p></div></div><footer class="stage-foot"><button id="exportButton" type="button" disabled>下载作品</button></footer></section>
-      </section>
-      <footer class="footer"><span><i class="dot"></i><span id="globalStatus">待开始</span></span><span>累计耗时 <strong id="totalTime">00:00</strong></span></footer>
+
+    <main id="batchApp" aria-label="时光对照创作工作台">
+      <header class="te-head"><div class="te-brand"><div class="te-logo" aria-hidden="true">↔</div><div><h1>时光对照</h1><small>过去的烟火气 · 如今的空落感</small></div></div><div class="te-models"><small id="keyStatus"></small><button id="toggleConfig" type="button">模型配置</button></div></header>
+      <div id="restoreNotice" class="te-resume-note" hidden><span id="restoreText"></span><button id="continueRestored" type="button">继续未完成任务</button></div>
+      <div class="te-workspace"><form id="batchForm" class="te-settings"><h2>01　开始前设置</h2>
+        <div class="te-folder"><strong>保存目录</strong><div id="folderPath" class="te-folder-path">请选择保存目录</div><button id="selectFolder" type="button">选择保存目录</button></div>
+        <div class="te-row"><label>目标合图数量<input id="count" type="number" min="1" max="12" value="6" data-batch-setting></label><label>发布平台<select id="platform" data-batch-setting><option>小红书</option><option>抖音</option><option>视频号</option><option>公众号</option></select></label></div>
+        <label class="te-label-block">补充方向 · 可选<textarea id="brief" rows="3" data-batch-setting placeholder="例如：童年的课间、小镇上的老店"></textarea></label>
+        <div class="te-rules"><div class="te-rule"><strong>主题随机 · 场景自由发散</strong><small>按数量抽取主题，同批优先不重复</small></div><div class="te-rule"><strong>旧年份从 2000 年起</strong><small>相隔 10 年以上为主，少量近年</small></div>
+        <label>新照片年份<select id="yearMode" data-batch-setting><option value="random">当年 / 上一年随机</option><option value="current">使用当年</option><option value="previous">使用上一年</option></select></label><small id="yearNote"></small>
+        <label class="te-label-block">生图服务<select id="providerSelect" data-batch-setting><option value="mock">本地流程演示（不调用模型）</option><option value="beihai">北海 AI</option><option value="openai">OpenAI</option><option value="gemini">Gemini</option></select></label>
+        <details class="te-advanced-list"><summary>照片与文字规则</summary><p>手持旧照，彩照为主、少量黑白；泛黄、污渍和褪色符合保存年限。现在图直接拍摄，无手、无相纸。</p><p>旧图在上、新图在下，白字黑边标注年份和跨度。合成尺寸 1080×1920，主体完整保留。</p></details>
+        <details class="te-advanced-list"><summary>并发与重试</summary><div class="te-row"><label>文本并发<input id="textLimit" type="number" min="1" max="12" value="6" data-batch-setting></label><label>生图并发<input id="imageLimit" type="number" min="1" max="6" value="2" data-batch-setting></label></div><p>临时错误自动重试最多 2 次，其余错误可手动处理；其他组正常继续。</p></details></div>
+        <button id="startBatch" class="te-primary te-start" type="submit" disabled>一键生成 6 张合图 →</button><div class="te-setting-foot" id="startHint">选好目录，每张合图完成后自动保存</div><div class="te-output-tools"><button id="newBatch" class="te-quiet" type="button" hidden>结束本批并新建</button></div>
+      </form><section class="te-main" aria-label="批量任务进度"><div class="te-batch-head"><div><h2>02　各组独立推进</h2><small>随机选题 → 新旧照片 → 合成加字 → 保存</small></div><div class="te-batch-actions"><button id="pauseBatch" type="button" disabled>暂停整批</button><button id="openFolder" type="button" disabled>打开保存目录</button></div></div>
+      <div class="te-progress" id="batchProgress" role="progressbar" aria-label="已保存合图" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><div></div></div><div class="te-summary" aria-live="polite"><span id="batchCounts">尚未开始</span><span id="batchStatus">准备就绪</span></div>
+      <div class="te-board"><div class="te-columns" aria-hidden="true"><span>任务 / 年份</span><span>灵感</span><span>提示词</span><span>旧照</span><span>今照</span><span>合成</span><span>保存</span><span>单组操作</span></div><div id="batchJobs"><div style="padding:42px 20px;text-align:center;color:var(--te-sub)">开始后，所有任务会在这里独立推进。</div></div><div class="te-board-footer"><span>同组今照引用旧照</span><span>合成、加字在本地完成</span><span>写入成功才计入已保存</span></div></div>
+      <div id="batchNotice" class="te-notice" role="status" aria-live="polite"></div><section id="jobDetail" class="te-detail" hidden aria-label="任务详情"></section></section></div>
     </main>
           <dialog id="configPanel"><header class="modal-head"><h2>模型配置</h2><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body">
 
@@ -208,15 +178,15 @@
             </div>
             <label>选择服务
               <select id="defaultProvider">
-                <option value="mock">Mock 流程预览</option>
+                  <option value="mock">本地流程演示</option>
                 <option value="beihai">北海 AI · GPT Image 2</option>
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Gemini</option>
               </select>
             </label>
             <div data-image-provider="mock" class="mock-config-note">
-              <strong>先预览，再生图</strong>
-              <p>无需生图 Key，使用示意图预览流程。生成真实照片请选择北海 AI、OpenAI 或 Gemini。</p>
+              <strong>本地流程演示</strong>
+              <p>使用带演示标识的图形验证批量流程和保存，不调用模型。生成真实照片请选择北海 AI、OpenAI 或 Gemini。</p>
             </div>
             <div data-image-provider="beihai" class="hidden">
               <label>API Key<input id="beihaiImageKey" type="password" autocomplete="off" placeholder="留空则使用文本模型的北海 Key"></label>
@@ -267,7 +237,7 @@
             </div>
           </section>
         </div>
-        <div class="config-footer">
+        <p id="configBatchNote"></p><div class="config-footer">
           <p class="hint">Key 仅保存在当前浏览器，请在自己的设备上使用。</p>
           <div class="config-actions">
             <button id="clearConfig" class="ghost" type="button">清空本地配置</button>
@@ -276,25 +246,15 @@
         </div>
         <div id="configStatus" class="status" role="status" aria-live="polite"></div>
       </div></dialog>
-    <dialog id="titlesDialog"><header class="modal-head"><div><h2>短视频标题</h2><small id="titleCount">0 个</small></div><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body"><button id="titleButton" type="button" class="primary">生成标题</button><div id="titleStatus" class="status" role="status" aria-live="polite"></div><div id="titles" class="title-list"></div></div></dialog>
-    <dialog id="detailDialog"><header class="modal-head"><h2 id="detailTitle"></h2><button type="button" class="close" aria-label="关闭">×</button></header><div id="detailBody" class="modal-body"></div></dialog>
-    <dialog id="editorDialog"><header class="modal-head"><h2 id="editorTitle">编辑提示词</h2><button type="button" class="close" aria-label="关闭">×</button></header><div class="modal-body"><textarea id="editorText" aria-label="完整内容"></textarea><div class="modal-actions"><button id="editorSave" type="button" class="primary">保存修改</button></div></div></dialog>
-    <div class="hidden" aria-hidden="true"><span id="selectedTitle"></span><textarea id="decadePrompt"></textarea><textarea id="nowPrompt"></textarea><textarea id="caption"></textarea></div>
+
+    <dialog id="pictureDialog"><header class="modal-head"><h2 id="pictureTitle">图片预览</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><img id="pictureFull" class="photo-enlarged" alt="完整图片"></div></dialog>
+    <dialog id="helpDialog"><header class="modal-head"><h2>本机保存服务</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><p id="appHelp">双击项目目录中的「启动创作工具.vbs」，即可选择电脑目录并自动保存。若浏览器支持直接选择目录，也可以继续使用当前页面。</p></div></dialog>
+    <dialog id="titlesDialog"><header class="modal-head"><h2>短视频标题</h2><button class="close" type="button" aria-label="关闭">×</button></header><div class="modal-body"><div id="titleStatus" role="status"></div><div id="titles"></div></div></dialog>
     <div id="toast" class="toast hidden" role="status"></div>
     <script>
       const $ = (selector) => document.querySelector(selector);
       const storageKey = "timeEchoSingleFileConfig";
-      const state = {
-        config: {},
-        ideas: [],
-        ideaHistory: [],
-        titles: [],
-        titleHistory: [],
-        selectedIdea: null,
-        promptPack: null,
-        promptBusy: false
-      };
-
+      const state = {config:{}};
       const defaults = {
         textProvider: "deepseek",
         beihaiKey: "",
@@ -323,20 +283,6 @@
         geminiAspectRatio: "1:1",
         defaultProvider: "mock"
       };
-
-      const systemPrompt = `你是一个自媒体视觉策划和 AI 生图提示词导演。
-你的任务是围绕“2000年前后旧照片 vs 现在（2026年）”的时间对照图生成创意、提示词和文案。
-围绕真实的农村生活、家庭记忆和村庄环境变迁自由创造场景，不要把常见示例当成固定菜单，不要形成固定场景组合或固定输出顺序。核心不是“过去穷现在（2026年）富”，而是“以前简陋但有生机，现在（2026年）更清楚但荒凉空置”。
-风格要求：真实、克制、有生活感，避免空洞鸡汤，避免过度煽情，重点表现房子还在、生活不在了，烟火气消失，人气散了。
-输出必须是严格 JSON，不要 Markdown，不要解释。`;
-
-      const oldPhotoTexture = "2000年前后彩色冲印照片翻拍质感：整张图不是直接拍摄过去现场，而是一张现代手机近距离翻拍的旧纸质彩色照片。旧照片可以放在木桌、旧相册页或普通桌面上，可有一只手轻轻按住边角；现代手机拍摄的外层桌面、手指、阴影和相纸边缘相对清楚，但旧照片内部的农村场景必须明显比外层低清、发软、细节少。旧照片内部要像傻瓜相机或早期数码相机拍完后冲印出来、又保存了二十多年后的普通家庭快照：低动态范围，轻微跑焦，暗部发脏，亮部略过曝，颜色褪色不均，轻微偏暖、偏红或偏绿，低饱和，边缘略糊。岁月痕迹必须进入照片内容区域，不要只旧在白边和角落：照片里的砖缝、树皮、墙面纹理、人物五官和衣服细节都不要锐利；画面内容上要有细小划痕、灰尘点、轻微水渍、压痕、折痕线、相纸老化斑和不均匀反光。相纸可有指纹、轻微卷角或折痕，但不要黑白、不要严重泛黄、不要七八十年代感、不要民国感、不要复古海报风。构图普通、不完美，像从家里抽屉翻出照片后随手用现在手机拍下来。强烈避免旧照片内部像现代高清摄影、高清修复老照片、新打印仿旧照片、电影光影、清晰砖缝、清晰树皮、清晰人物五官、专业摄影棚、商业广告质感。画面内绝对不要出现任何文字、数字、年份、日期、标题、标签、字幕、说明、Logo或水印；“2000年前后”和“2006年”只用于理解时间背景，不得渲染到图片中。";
-
-      const currentPhoneTexture = "现在（2026年）照片质感：清晰一些，但仍然像普通手机随手拍的真实生活照片，不要商业摄影，不要电影感，不要精致摆拍，不要过度修图，保留自然光、真实环境和生活细节。画面内绝对不要出现任何文字、数字、年份、日期、标题、标签、字幕、说明、标牌、Logo或水印；“2026年”只用于理解时间背景，不得渲染到图片中。";
-
-      const oldPhotoReferenceGuide = "重要：图1是一张现代手机翻拍的旧纸质照片，外层可能包含桌面、手指、相纸白边、反光和阴影。生成图2时，只把旧照片内部呈现的农村地点当作同地点参考；不要保留或延续图1外层的桌面、手指、相纸边框、照片卷角、折痕、反光和翻拍阴影。图2必须是现在（2026年）直接用普通手机站在同一地点拍到的现实场景。";
-
-      const ruralContrastGuide = "农村环境变迁方向：请主动创造具体、真实且有辨识度的农村生活空间，不要只从老屋、灶房、水井、晒谷场等常见场景中轮流选择。可以从生产劳动、家庭生活、儿童记忆、节庆习俗、公共空间、手艺营生、季节活动和地方建筑中自由发散。2000年前后的旧照片内部场景可以简陋、旧、朴素，但必须有人气和生机；现在（2026年）的同一地点照片更清楚，但要呈现空置、荒凉、杂乱、荒废。必须锁定旧照片内部的相机位置、透视、院落或道路几何、建筑主体、门窗开口、屋脊轮廓、成熟树主干和电线杆；自行车、盆、篮筐、工具、衣物、动物和零散杂物不是固定参照物，二十多年后的现在（2026年）大部分应消失、移位、被替换或明显腐坏。允许瓦片少量缺失或滑落、木门变形、玻璃局部破损，并在墙边、裂缝、门槛和角落形成不规则杂草。重点表达：以前的简陋是活着的，现在（2026年）的清楚是空着的。";
 
       function loadConfig() {
         try {
@@ -392,8 +338,8 @@
         });
       }
 
-      function getTextModelConfig() {
-        const config = state.config;
+      function getTextModelConfig(settings = state.config) {
+        const config = settings;
         switch (config.textProvider) {
           case "beihai":
             return { provider: "beihai", name: "北海 AI", key: config.beihaiKey, model: config.beihaiModel || defaults.beihaiModel, baseUrl: config.beihaiBaseUrl || defaults.beihaiBaseUrl, api: "responses", reasoningEffort: config.beihaiReasoningEffort || defaults.beihaiReasoningEffort };
@@ -409,76 +355,15 @@
       function updateKeyStatus() {
         const text = getTextModelConfig();
         const provider = $("#providerSelect").value;
-        const model = provider === "mock" ? "流程预览" : provider === "gemini" ? state.config.geminiModel : getOpenAIImageConfig(provider).model;
+        const model = provider === "mock" ? "不调用模型" : provider === "gemini" ? state.config.geminiModel : getOpenAIImageConfig(provider).model;
         $("#keyStatus").textContent = `文本 ${text.name} · ${text.model}　/　生图 ${providerName(provider)} · ${model}`;
         $("#keyStatus").title = text.key ? "文本 Key 已配置" : "文本 Key 未配置";
-      }
-
-      function setBusy(button, busy, text) {
-        if (!button.dataset.idleText) button.dataset.idleText = button.textContent;
-        button.disabled = busy;
-        button.textContent = busy ? text : button.dataset.idleText;
       }
 
       function showStatus(selector, message, isError = false) {
         const node = $(selector);
         node.textContent = message || "";
         node.classList.toggle("error", Boolean(isError));
-      }
-
-      function buildTimeEditLockGuide() {
-        return `【图2最高优先级：结构锁定与二十年变化指令】
-${oldPhotoReferenceGuide}
-
-图片2必须以图片1为唯一参考图做时间流逝编辑，不要重新设计相似地点，也不要延续图1外层的翻拍环境。
-先把图片1中的可见元素分成三类，再执行编辑：
-1. 永久场景锚点：旧照片内部农村场景的相机位置和高度、镜头距离、裁切、透视和画面歪斜、院落或道路几何、建筑主体、墙体位置、门窗开口、屋脊和屋顶主体轮廓、成熟树主干、电线杆。必须尽量严格对齐，不得移动、缩放或重画。
-2. 可老化结构细节：瓦片、门板、窗玻璃、墙皮、砖缝、围栏和固定灶台。保持所在区域和整体形式，但必须出现合理老化；允许少量瓦片缺失、滑落或破裂，木门变形，局部玻璃破损，墙皮和砖缝开裂。
-3. 临时生活物件：人物、动物、衣物、自行车、板凳、盆、篮筐、花盆、工具、蔬菜、柴火、容器和零散杂物。它们不是场景锚点，不得保持原有数量和精确位置；二十年后的现在（2026年）移除或明显改变其中60%-90%，留下的少数物件必须移位、废弃或明显腐坏。
-表现长期无人维护，而不只是改颜色：在裸露地面的约30%-90%形成不规则杂草，重点生长在墙边、裂缝、门槛和角落；同时加入落叶积土、蛛网、潮斑、褪色和少量风吹垃圾。至少表现3-6种跨材质老化痕迹，其中至少一种是缺瓦、滑瓦、木门变形、玻璃破损或遗留物移位等非表面变化。
-禁止改变永久场景锚点：不要改变道路宽度和方向，不要移动或缩放建筑、墙体、门窗开口、成熟树主干、电线杆和院落边界，不要改变拍摄视角。
-当二十年变化与画面对齐冲突时，优先保留永久场景锚点，但仍必须改变临时生活物件和可老化结构细节。`;
-      }
-
-      function buildPromptCopyText() {
-        const decadePrompt = withOldPhotoTexture($("#decadePrompt").value.trim());
-        const nowPrompt = $("#nowPrompt").value.trim();
-        const lockGuide = buildTimeEditLockGuide();
-        return `请生成一张适合手机观看的同一地点2000年前后至今竖版对比图。
-
-【最高优先级：最终输出与排版】
-最终只输出一张完整的9:16竖版合图，不要输出两张独立图片。
-必须上下拼接，禁止左右拼接：2000年前后旧照片画面放在上半部分，现在（2026年）画面放在下半部分，上下各占约50%，两部分同宽、边缘对齐。
-上下画面必须展示同一地点、相同相机位置和相近裁切，让固定结构能直接上下对照。
-
-【最高优先级：画面内绝对无文字】
-“2000年前后”“2006年”和“现在（2026年）”只用于说明上下画面的时间背景和排列顺序，绝对不得作为文字渲染到图片中。
-上下两部分都禁止出现任何文字、数字、年份、日期、标题、标签、字幕、注释、说明、标牌、Logo、水印、边框、装饰性版式或多余留白。
-不要写“2000年”“2006年”“2006年夏天”“2026年”“现在”等任何时间标签；只能通过场景内容、拍摄质感和自然老化表现时间变化。
-
-第一步：根据【图1提示词】生成图片1，图片1是现代手机翻拍的2000年前后彩色冲印照片。
-
-第二步：请把图片1作为唯一参考图生成图片2。图片2不是重新画一个相似地点，而是只参考图1旧照片内部的农村地点做时间流逝编辑：不要保留桌面、手指、相纸白边、卷角、折痕和翻拍反光；永久空间结构尽量对齐，同时让临时生活物件、植物生长和可老化构件发生合理的二十年变化。
-
-第三步：把图片1放在上方、图片2放在下方，合成为一张9:16竖版图片后再输出。不要左右排列，不要只输出其中一张，也不要分别输出两张。
-
-【图1提示词】
-${decadePrompt}
-
-【图1最终检查】
-再次确认：上半部分是一张现代手机翻拍的旧纸质彩色照片，不是现代高清场景照。旧照片内部必须明显低清、发软、褪色不均，砖缝、树皮、墙面纹理、人物五官和衣服细节不要锐利；岁月痕迹必须穿过照片内容区域，包括细小划痕、灰尘点、轻微水渍、压痕、折痕线、相纸老化斑和不均匀反光。不要只让白边和角落变旧，不要做成新打印的仿旧照片或高清修复老照片。
-
-${lockGuide}
-
-【图2变化提示词】
-${nowPrompt}
-
-【图2最终检查】
-再次确认：图片2的相机位置、裁切、透视、道路或院落几何、建筑主体、墙体、门窗开口、屋脊轮廓、成熟树主干和电线杆必须与图片1旧照片内部的农村地点严格对齐。不要把桌面、手指、相纸边框、反光当作场景内容；不要把自行车、盆、篮筐、工具、衣物、动物和零散杂物当作固定参照物；其中60%-90%应消失、移位、被替换或明显腐坏。检查是否有不规则杂草、跨材质老化，以及至少一种非表面变化；不能只做无人、冷色、落灰和褪色。
-
-【输出前最终检查】
-只交付一张9:16竖版图片；2000年前后旧照片场景在上，现在（2026年）场景在下；上下各占约一半；绝对禁止左右拼接、横版画布、两张分开输出或遗漏任意一张。
-输出前检查整张图：不得出现任何可读文字、数字、年份、日期、标题、标签、字幕、说明、Logo或水印；如出现，必须移除后再输出。`;
       }
 
       async function copyText(text) {
@@ -525,8 +410,8 @@ ${nowPrompt}
         return data;
       }
 
-      async function callTextModel(messages, temperature = 0.85) {
-        const config = getTextModelConfig();
+      async function callTextModel(messages, temperature = 0.85, settings = state.config) {
+        const config = getTextModelConfig(settings);
         if (!config.key) throw new Error(`请先在模型配置中填写 ${config.name} 文本模型的 API Key 并保存。`);
         const signal = AbortSignal.timeout(180000);
         let text;
@@ -591,382 +476,20 @@ ${nowPrompt}
         }
       }
 
-      async function buildIdeas(payload) {
-        const count = Math.min(Number(payload.count) || 6, 12);
-        const creativeSeed = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-        const recentIdeas = state.ideaHistory.length ? state.ideaHistory.join("\n") : "无，这是本次会话第一次生成。";
-        const userPrompt = `请生成 ${count} 个“2000年前后旧照片 vs 现在（2026年）”的自媒体图片选题。你需要像真正的创意策划一样主动发现具体场景，而不是从常见农村场景列表中逐项选择。
-用户补充：${payload.brief || "无"}
-主题：${payload.theme || "不限"}
-情绪：${payload.emotion || "怀旧、共鸣"}
-目标人群：普通中文自媒体用户
-平台：${payload.platform || "小红书/抖音/视频号"}
-本次创意种子：${creativeSeed}
-
-本次会话最近生成过的选题，禁止重复或轻微改写：
-${recentIdeas}
-
-${ruralContrastGuide}
-
-创意多样性是最高优先级要求：
-1. 禁止使用固定的“老屋、灶房、水井、晒谷场、村口小路”组合和顺序，也不要为了凑数量逐项套用常见空间。
-2. 同一批选题的地点功能、生活事件、永久场景锚点和情感触发物必须明显不同，标题与故事不得互为换词改写。
-3. 至少一半选题必须来自不常被首先想到、但在真实农村生活中合理存在的具体空间或活动。由你自行创造，不要复述提示词中的示例。
-4. 每次请求都要根据本次创意种子重新发散；即使主题和补充方向相同，也要产生与最近历史明显不同的新构想。
-5. 先在内部发散至少三倍数量的候选构想，再只输出差异最大、画面感最强的 ${count} 个。
-
-选题不要写成过去贫穷、现在（2026年）富裕，也不要跑到现代城市、商业街、校园都市生活。必须写成：2000年前后旧照片里的地方虽然简陋但有人气、有阳光、有烟火气、有生机；现在（2026年）照片更清楚，但同一农村地点空置、荒凉、杂乱、荒废，生活气消失。
-每个选题必须有2-4个永久场景锚点 anchorObject，用于保证两张图像是同一个地方。优先选择建筑主体、墙体位置、门窗开口、道路或院落边界、屋脊轮廓、成熟树主干、电线杆、门口台阶等稳定结构；不要把自行车、盆、篮筐、衣物、动物、工具、稻草垛、旧拖拉机或零散杂物写成永久场景锚点。
-nowDecayDetails 要同时包含临时生活物件的消失或移位、不规则杂草、跨材质老化，以及至少一种有限的非表面变化，例如少量缺瓦或滑瓦、木门变形、局部玻璃破损、遗留物移位。不得改变道路方向、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干或电线杆位置。
-
-JSON 格式：
-{
-  "ideas": [
-    {
-      "id": "短id",
-      "title": "选题标题",
-      "story": "2000年前后旧照片和现在（2026年）的农村环境对照故事，一句话说清楚",
-      "theme": "主题",
-      "emotion": "情绪",
-      "anchorObject": "永久场景锚点，2-4个，不包含可移动生活物件",
-      "oldLifeDetails": "2000年前后旧照片里有生机的细节",
-      "nowDecayDetails": "现在（2026年）荒废杂乱的细节",
-      "hook": "让人停留的共情点"
-    }
-  ]
-}`;
-        const text = await callTextModel([
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ], 1);
-        const data = extractJson(text);
-        const historyEntries = (data.ideas || []).map((idea) => `${idea.title || ""}｜${idea.story || ""}`);
-        state.ideaHistory = [...state.ideaHistory, ...historyEntries].slice(-40);
-        return data;
-      }
-
-      async function buildVideoTitles(payload) {
-        const count = Math.min(Math.max(Number(payload.count) || 6, 4), 12);
-        const selectedContext = state.selectedIdea
-          ? JSON.stringify({
-              title: state.selectedIdea.title || "",
-              story: state.selectedIdea.story || "",
-              hook: state.selectedIdea.hook || "",
-              oldLifeDetails: state.selectedIdea.oldLifeDetails || "",
-              nowDecayDetails: state.selectedIdea.nowDecayDetails || ""
-            })
-          : "未选择具体选题，请根据用户补充、主题和情绪自由创作。";
-        const recentTitles = state.titleHistory.length
-          ? state.titleHistory.join("\n")
-          : "无，这是本次会话第一次生成。";
-        const creativeSeed = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-        const userPrompt = `请为一条中文短视频生成 ${count} 个可直接发布的标题，并为每个标题写一句可承接标题的前三秒开场。
-视频内容通常由多组“2000年前后旧照片 vs 现在（2026年）同地点照片”组成：上半部分像从相册或抽屉里翻出来的旧彩色冲印照片，旧照片里有人气、有饭点、有院子里的声音；下半部分是同一地点现在的普通手机照片，更清楚，但空置、荒凉、草长出来、人不常回来了。
-
-用户补充：${payload.brief || "无"}
-主题：${payload.theme || "不限"}
-情绪：${payload.emotion || "怀旧、遗憾"}
-平台：${payload.platform || "抖音/视频号/小红书"}
-当前已选选题：${selectedContext}
-本次创意种子：${creativeSeed}
-
-本次会话已经生成过的标题，禁止重复、近义改写或只替换一个物件：
-${recentTitles}
-
-目标风格：
-- 标题要有“让人破防但克制”的共情感，不靠喊痛，而是突然说出一个普通事实。
-- 核心反差是：旧照片更糊但人气是真的；现在照片更清楚却空了。围绕“照片、相册、院门、饭点、屋里有人应、草长出来、椅子没人坐、门不用锁、回家的路”等具体细节写。
-- 可以像一小段克制散文，但普通人一眼能懂。最理想的结构是“前半句写画面，后半句忽然落到一句大白话”。
-- 适合多组对比照片的视频，不要每个标题都绑死单一物件；除非用户补充或当前选题很明确。
-- 悲伤来自具体事实和生活细节，不靠堆砌形容词，不故作深沉，不写成鸡汤。
-
-可学习的情绪方向，禁止照抄：
-- 以前照片很糊，可我一眼就认得回家的路
-- 以前这张照片没人觉得珍贵，因为大家都还在
-- 现在拍得清楚了，反而什么都没有了
-- 那时候房子破，但每个屋里都有人
-- 上半张是生活，下半张是时间
-- 以前嫌院子小，后来才知道那叫家
-
-硬性要求：
-1. 标题必须忠于视频内容，不制造视频无法兑现的虚假情节。
-2. 每个标题最好 14-30 个汉字，最多 36 个汉字；不用句号，少用感叹号和省略号。
-3. 每个标题至少包含一个具体生活意象、动作或照片对比关系，避免只写抽象的故乡、青春、岁月、遗憾。
-4. 禁止批量套用“后来、原来、直到那天、我愣住了、再也回不去、岁月偷走了、破防了、泪目了”等常见网感句式。
-5. 同一批标题的句式、意象、叙述视角和情绪落点必须明显不同。
-6. 先在内部写出至少三倍数量的候选，再保留最自然、最有画面、最容易让人停留的 ${count} 个。
-7. 风格类型要均衡覆盖：照片反差、烟火落地、直白刺痛、散文余味、停留钩子。不要全部写成一种腔调。
-8. 前三秒开场必须自然承接标题，用一句口语把观众带进具体场景，不能复述标题。
-
-只输出严格 JSON，不要 Markdown，不要解释：
-{
-  "titles": [
-    {
-      "title": "可直接发布的短视频标题",
-      "style": "照片反差/烟火落地/直白刺痛/散文余味/停留钩子",
-      "opening": "承接标题的前三秒口语开场",
-      "reason": "这个标题最有效的具体意象或反差，15字以内"
-    }
-  ]
-}`;
-        const text = await callTextModel([
-          {
-            role: "system",
-            content: "你是克制、敏锐的中文短视频标题编辑。你擅长把散文感、真实生活和点击欲望放在同一句话里。输出必须是严格 JSON。"
-          },
-          { role: "user", content: userPrompt }
-        ], 1.05);
-        const data = extractJson(text);
-        const titles = Array.isArray(data.titles) ? data.titles.slice(0, count) : [];
-        state.titleHistory = [
-          ...state.titleHistory,
-          ...titles.map((item) => item.title || "").filter(Boolean)
-        ].slice(-60);
-        return { titles };
-      }
-
-      async function buildPromptPack(idea) {
-        const userPrompt = `把下面选题扩写成一组可直接用于生图的提示词。
-选题标题：${idea.title || ""}
-选题故事：${idea.story || ""}
-共情点：${idea.hook || ""}
-永久场景锚点：${idea.anchorObject || "建筑主体、红砖墙位置、门窗开口、门前老树主干、院落边界"}
-2000年前后旧照片里的生机细节：${idea.oldLifeDetails || "温暖阳光、扫过的院子、晾衣绳、菜园、鸡鸭、炊烟、有人打水浇菜、晒粮、聊天、正在使用的农具"}
-现在（2026年）荒废细节：${idea.nowDecayDetails || "不规则荒草、脱落墙皮、少量缺瓦或滑瓦、木门变形、废弃物件移位、压水井生锈、灶台落灰、没有人、没有炊烟"}
-平台：${$("#platform").value}
-比例：${$("#ratio").value}
-
-${ruralContrastGuide}
-
-要求：
-1. “2000年前后旧照片”和“现在（2026年）”必须像同一农村地点、相近视角。
-2. 两张图必须保留同一组永久场景锚点。优先选择相机位置、道路或院落几何、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干、电线杆、门口台阶等稳定结构。自行车、盆、篮筐、衣物、动物、工具、稻草垛、旧拖拉机和零散杂物属于临时生活物件，不能作为必须原样保留的场景锚点。
-3. 2000年前后旧照片必须是现代手机翻拍的实体彩色冲印照片：外层可以出现桌面、旧相册页、手指、相纸边缘、轻微反光、指纹、划痕、卷角或折痕；旧照片内部是农村生活空间，简陋但有生机，可以是老屋院子、灶房、菜园、水井、村口小路、晒谷场、农具棚、牲口棚、小卖部、村卫生室、老戏台、祠堂门口。旧照片内部画面必须比现代手机翻拍的外层明显更低清、更软、更少细节，像傻瓜相机或早期数码相机拍摄后冲印出来、又保存了二十多年后的普通家庭快照：低动态范围、轻微跑焦、暗部发脏、亮部略过曝、轻微偏色、低饱和、褪色不均、边缘略糊。岁月痕迹要进入照片内容区域，不要只放在白边和角落；内容画面里要有细小划痕、灰尘点、轻微水渍、压痕、折痕线、相纸老化斑和不均匀反光。必须明确避免黑白、严重泛黄、七八十年代感、民国感、专业摄影、电影感、精致构图、商业广告质感、复古海报风、高清修复老照片、新打印仿旧照片、清晰砖缝、清晰树皮和清晰人物五官。
-4. 现在（2026年）更清晰、更现实，但仍然像普通手机随手拍。必须呈现同一农村地点长期空置和无人维护。只参考图1旧照片内部的农村地点，不要把桌面、手指、相纸边框、卷角、折痕和翻拍反光延续到图2。移除或明显改变图1旧照片内部场景中60%-90%的临时生活物件；自行车、盆、篮筐、花盆、工具、衣物、动物和零散杂物不得默认原样留在原位置，留下的少数物件必须移位、废弃或明显腐坏。
-5. nowPrompt 必须像“在图1基础上的编辑说明”，不要像重新生成另一个场景。必须明确锁定相机位置、裁切、道路或院落几何、建筑主体、墙体位置、门窗开口、屋脊轮廓、成熟树主干、电线杆位置、拍摄角度和透视关系。
-6. nowPrompt 必须允许可老化结构细节发生有限变化：少量瓦片缺失、滑落或破裂，木门变形，局部玻璃破损，墙皮和砖缝开裂。禁止改变建筑主体和空间几何：道路变窄、道路改方向、成熟树主干断裂、换成另一棵树、电线杆明显倾斜、房屋换材质、屋顶换形式、门窗开口换位置、墙体重建、左右房屋位置变化。
-7. nowPrompt 必须给出可检查的二十年变化预算：裸露地面约15%-30%出现不规则杂草，重点位于墙边、裂缝、门槛和角落；加入3-6种跨材质老化痕迹；至少包含一种缺瓦、滑瓦、木门变形、玻璃破损或遗留物移位等非表面变化。不能只写无人、冷色、落灰、褪色和蛛网。
-8. 情绪要克制，不要直接煽情；重点是“房子还在，生活不在了”“以前的简陋是活着的，现在（2026年）的清楚是空着的”。
-9. 不要出现具体名人、商标、真实未授权人物。
-10. 提示词要适合中文图片模型，也要包含摄影/构图/质感指令。
-
-JSON 格式：
-{
-  "title": "标题",
-  "story": "故事摘要",
-  "ratio": "4:5 或 1:1 或 9:16 或 16:9",
-  "decadePrompt": "现代手机翻拍2000年前后彩色冲印照片的图片提示词",
-  "nowPrompt": "现在（2026年）图片提示词",
-  "caption": "自媒体配文，2-4行",
-  "hashtags": ["标签1", "标签2"],
-  "quickEdits": ["更有年代感", "更像同一地点"]
-}`;
-        const text = await callTextModel([
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ], 0.75);
-        return extractJson(text);
-      }
-
-      const flow = {
-        active: null, timer: null, totalMs: 0, lastMessage: "待开始", pair: null, editor: null,
-        steps: Object.fromEntries(["ideas", "prompts", "images", "titles"].map((name) => [name, { status: "idle", elapsed: 0 }]))
-      };
-      const stageStatus = { ideas: "#ideaStatus", prompts: "#promptStatus", images: "#imageStatus", titles: "#titleStatus" };
       function formatTime(ms) {
         const seconds = Math.floor(ms / 1000);
         return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
       }
+
       function notify(message) {
-        clearTimeout(flow.toastTimer);
+        clearTimeout(state.toastTimer);
         $("#toast").textContent = message;
         $("#toast").classList.remove("hidden");
-        flow.toastTimer = setTimeout(() => $("#toast").classList.add("hidden"), 3000);
-      }
-      function startFlow(name, label) {
-        if (flow.active) return false;
-        flow.active = name;
-        flow.steps[name] = { status: "running", elapsed: 0, started: performance.now(), label };
-        flow.lastMessage = label;
-        renderFlow();
-        flow.timer = setInterval(renderFlow, 250);
-        return true;
-      }
-      function finishFlow(name, error) {
-        const step = flow.steps[name];
-        step.elapsed = performance.now() - step.started;
-        step.status = error ? "error" : "done";
-        flow.totalMs += step.elapsed;
-        flow.active = null;
-        clearInterval(flow.timer);
-        const label = { ideas: "灵感", prompts: "提示词", images: "图片", titles: "标题" }[name];
-        flow.lastMessage = error ? `${label}生成失败` : `${label}已完成`;
-        const node = $(stageStatus[name]);
-        node.classList.remove("loading");
-        showStatus(stageStatus[name], error ? `${friendlyError(error)} · 耗时 ${formatTime(step.elapsed)}` : `已完成 · ${formatTime(step.elapsed)}`, Boolean(error));
-        renderFlow();
-      }
-      function renderFlow() {
-        const active = flow.active;
-        const hasPrompts = Boolean($("#decadePrompt").value.trim() && $("#nowPrompt").value.trim());
-        if (active) {
-          const step = flow.steps[active];
-          step.elapsed = performance.now() - step.started;
-          const node = $(stageStatus[active]);
-          node.className = "status loading";
-          // 保留圆环节点；每次计时都重建会让旋转动画不断从头开始。
-          if (!node.querySelector(".run-line")) {
-            node.innerHTML = '<div class="run-line"><i class="spinner" aria-hidden="true"></i><span></span><b></b></div>';
-          }
-          node.querySelector(".run-line span").textContent = step.label;
-          node.querySelector(".run-line b").textContent = `已等待 ${formatTime(step.elapsed)}`;
-        }
-        for (const [name, step] of Object.entries(flow.steps)) {
-          const nav = document.querySelector(`[data-step="${name}"]`);
-          if (nav) {
-            nav.className = `journey-step ${step.status === "running" ? "running" : step.status === "done" ? "done" : step.status === "error" ? "error" : ""}`;
-            nav.querySelector(".step-disc").textContent = step.status === "done" ? "✓" : step.status === "error" ? "!" : { ideas: "02", prompts: "03", images: "04" }[name];
-            nav.querySelector("small").textContent = step.status === "idle" ? "待开始" : `${{ running: "进行中", done: "已完成", error: "失败" }[step.status]} · ${formatTime(step.elapsed)}`;
-          }
-          const panel = $("#" + name + "Stage");
-          panel?.classList.toggle("active-stage", active === name);
-          panel?.setAttribute("aria-busy", String(active === name));
-        }
-        $(".prompt-content").setAttribute("aria-busy", String(active === "prompts"));
-        $("#totalTime").textContent = formatTime(flow.totalMs + (active ? flow.steps[active].elapsed : 0));
-        $("#globalStatus").textContent = active ? flow.steps[active].label : flow.lastMessage;
-        $("#promptBadge").textContent = active === "prompts" ? "生成中" : hasPrompts ? "可编辑" : "待生成";
-        $("#ideaButton").disabled = Boolean(active);
-        $("#generatePromptButton").disabled = Boolean(active) || !state.selectedIdea;
-        $("#promptButton").disabled = Boolean(active) || !state.selectedIdea;
-        $("#imageButton").disabled = Boolean(active) || !hasPrompts;
-        $("#copyPromptButton").disabled = !hasPrompts;
-        $("#titleButton").disabled = Boolean(active);
-        $("#retryImageButton").disabled = Boolean(active) || !hasPrompts;
-        $("#exportButton").disabled = !$("#decadeImage").hasAttribute("src");
-        $("#ideaDetailButton").disabled = !state.selectedIdea;
-        document.querySelectorAll(".idea-card, #ideaForm input, #ideaForm select, #ideaForm textarea, #providerSelect, #ratio, #saveConfig, #clearConfig, #toggleConfig, [data-editor]").forEach((element) => { element.disabled = Boolean(active); });
-        const names = { ideaButton: ["生成灵感 →", "生成灵感中"], generatePromptButton: ["生成作图提示词 →", "生成提示词中"], imageButton: ["生成两张对照图 →", "图片生成中"], titleButton: ["生成标题", "生成标题中"] };
-        for (const [id, labels] of Object.entries(names)) $("#" + id).textContent = labels[active === { ideaButton: "ideas", generatePromptButton: "prompts", imageButton: "images", titleButton: "titles" }[id] ? 1 : 0];
-      }
-      function refreshPreviews() {
-        $("#decadePreview").textContent = $("#decadePrompt").value || "等待生成提示词";
-        $("#nowPreview").textContent = $("#nowPrompt").value || "等待生成提示词";
-        $("#captionPreview").textContent = $("#caption").value || "暂无配文";
-        renderFlow();
-      }
-      function clearImages(resetTiming = true) {
-        flow.pair = null;
-        for (const [image, link, placeholder, label] of [["decadeImage", "downloadDecade", "decadePlaceholder", "等待生成"], ["nowImage", "downloadNow", "nowPlaceholder", "等待旧照"]]) {
-          $("#" + image).removeAttribute("src");
-          $("#" + image).closest("button").disabled = true;
-          $("#" + image).parentElement.classList.remove("working");
-          $("#" + link).classList.add("hidden");
-          $("#" + link).removeAttribute("href");
-          $("#" + placeholder).textContent = label;
-        }
-        $("#decadeTime").textContent = "旧照";
-        $("#nowTime").textContent = "现在";
-        $("#retryImageButton").classList.add("hidden");
-        $("#resultStatus").textContent = "待生成";
-        if (resetTiming) {
-          flow.steps.images = { status: "idle", elapsed: 0 };
-          showStatus("#imageStatus", "");
-          $("#imageStatus").classList.remove("loading");
-        }
-      }
-      function clearPrompts() {
-        state.promptPack = null;
-        for (const id of ["decadePrompt", "nowPrompt", "caption"]) $("#" + id).value = "";
-        flow.steps.prompts = { status: "idle", elapsed: 0 };
-        showStatus("#promptStatus", "");
-        clearImages();
-        refreshPreviews();
-      }
-      function showDetail(title, content) {
-        $("#detailTitle").textContent = title;
-        $("#detailBody").replaceChildren(content);
-        $("#detailDialog").showModal();
+        state.toastTimer = setTimeout(() => $("#toast").classList.add("hidden"), 3000);
       }
 
-      function renderIdeas() {
-        $("#ideaCount").textContent = `${state.ideas.length} 个`;
-        $("#ideas").replaceChildren();
-        state.ideas.forEach((idea, index) => {
-          const button = document.createElement("button");
-          button.className = `idea-card${state.selectedIdea === idea ? " active" : ""}`;
-          button.type = "button";
-          button.disabled = Boolean(flow.active);
-          button.setAttribute("aria-pressed", String(state.selectedIdea === idea));
-          button.title = idea.title || "灵感";
-          button.innerHTML = `<strong>${String(index + 1).padStart(2, "0")}　${escapeHtml(idea.title)}</strong><p>${escapeHtml(idea.story || idea.hook || idea.emotion || "")}</p>`;
-          button.addEventListener("click", () => selectIdea(idea));
-          $("#ideas").append(button);
-        });
-        renderFlow();
-      }
-
-      function renderTitles() {
-        $("#titleCount").textContent = `${state.titles.length} 个 · 点击标题即可复制`;
-        $("#titles").innerHTML = "";
-        state.titles.forEach((item) => {
-          const button = document.createElement("button");
-          button.className = "title-card";
-          button.type = "button";
-          button.title = "点击复制标题";
-          button.innerHTML = `
-            <span>${escapeHtml(item.style || "标题灵感")}</span>
-            <strong>${escapeHtml(item.title || "")}</strong>
-            <p>${escapeHtml(item.opening || "")}</p>
-            <span>${escapeHtml(item.reason || "点击复制标题")}</span>
-          `;
-          button.addEventListener("click", async () => {
-            try {
-              await copyText(item.title || "");
-              showStatus("#titleStatus", `已复制：${item.title || ""}`);
-            } catch (error) {
-              showStatus("#titleStatus", friendlyError(error), true);
-            }
-          });
-          $("#titles").append(button);
-        });
-      }
-
-      function selectIdea(idea) {
-        if (flow.active || state.selectedIdea === idea) return;
-        state.selectedIdea = idea;
-        $("#selectedTitle").textContent = idea.title || "";
-        clearPrompts();
-        renderIdeas();
-      }
-
-      async function fillPromptPack(idea) {
-        if (!idea || !startFlow("prompts", "正在生成提示词")) return;
-        state.promptBusy = true;
-        let failure;
-        try {
-          const pack = await buildPromptPack(idea);
-          if (typeof pack.decadePrompt !== "string" || !pack.decadePrompt.trim() || typeof pack.nowPrompt !== "string" || !pack.nowPrompt.trim()) {
-            throw new Error("模型未返回完整的两段提示词，原有内容已保留。");
-          }
-          state.promptPack = pack;
-          $("#selectedTitle").textContent = pack.title || idea.title;
-          $("#ratio").value = normalizeRatio(pack.ratio) || $("#ratio").value;
-          $("#decadePrompt").value = withOldPhotoTexture(pack.decadePrompt);
-          $("#nowPrompt").value = withCurrentPhoneTexture(pack.nowPrompt);
-          $("#caption").value = pack.caption || "";
-          clearImages();
-          refreshPreviews();
-        } catch (error) {
-          failure = error;
-        } finally {
-          state.promptBusy = false;
-          finishFlow("prompts", failure);
-        }
-      }
-
-      function getOpenAIImageConfig(provider = "openai") {
-        const config = state.config;
+      function getOpenAIImageConfig(provider = "openai", settings = state.config) {
+        const config = settings;
         if (provider === "beihai") {
           return { provider, name: "北海 AI", key: config.beihaiImageKey || config.beihaiKey, model: config.beihaiImageModel || defaults.beihaiImageModel, baseUrl: (config.beihaiImageBaseUrl || defaults.beihaiImageBaseUrl).trim().replace(/\/+$/, ""), size: config.beihaiImageSize || defaults.beihaiImageSize, quality: config.beihaiImageQuality || defaults.beihaiImageQuality };
         }
@@ -977,6 +500,7 @@ JSON 格式：
         if (!config.key) throw new Error(`${config.name} 生图 API Key 未配置，请填写并保存配置。`);
         const data = await fetchJson(`${config.baseUrl}/images/generations`, {
           method: "POST",
+            signal: AbortSignal.timeout(300000),
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${config.key}`
@@ -1002,6 +526,7 @@ JSON 格式：
           // 北海图床未开放 CORS；由生图服务读取原图，避免浏览器下载后再上传。
           data = await fetchJson(`${config.baseUrl}/images/edits`, {
             method: "POST",
+            signal: AbortSignal.timeout(300000),
             headers: { "content-type": "application/json", authorization: `Bearer ${config.key}` },
             body: JSON.stringify({
               model: config.model,
@@ -1015,7 +540,7 @@ JSON 格式：
         } else {
           if (!referenceDataUrl?.startsWith("data:")) {
             if (config.provider === "beihai") throw new Error("参考图地址无效，未提交第二张生成请求。");
-            return imageFromOpenAI(prompt, config);
+            throw new Error("参考图未缓存，不能生成未引用旧照的现在图。");
           }
           const reference = dataUrlToBlob(referenceDataUrl);
           const form = new FormData();
@@ -1028,6 +553,7 @@ JSON 格式：
 
           data = await fetchJson(`${config.baseUrl}/images/edits`, {
             method: "POST",
+            signal: AbortSignal.timeout(300000),
             headers: { authorization: `Bearer ${config.key}` },
             body: form
           });
@@ -1038,29 +564,29 @@ JSON 格式：
         throw new Error(`${config.name} 没有返回图片数据`);
       }
 
-      async function imageFromGemini(prompt, referenceDataUrl) {
-        if (!state.config.geminiKey) throw new Error("Gemini API Key 未配置");
+      async function imageFromGemini(prompt, referenceDataUrl, settings = state.config, requireReference = false) {
+        if (!settings.geminiKey) throw new Error("Gemini API Key 未配置");
+        const reference = typeof referenceDataUrl === 'string' ? parseDataUrl(referenceDataUrl) : null;
+        if ((requireReference || referenceDataUrl !== undefined) && !reference?.mimeType.startsWith('image/')) throw new Error("参考旧照未缓存，不能生成未引用旧照的现在图。");
         const parts = [{ text: prompt }];
-        if (referenceDataUrl?.startsWith("data:")) {
-          const parsed = parseDataUrl(referenceDataUrl);
-          if (parsed) {
-            parts.push({
+        if (reference) {
+          parts.push({
               inlineData: {
-                mimeType: parsed.mimeType,
-                data: parsed.base64
+                mimeType: reference.mimeType,
+                data: reference.base64
               }
-            });
-          }
+          });
         }
-        const model = state.config.geminiModel || "gemini-2.5-flash-image";
-        const data = await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(state.config.geminiKey)}`, {
+        const model = settings.geminiModel || "gemini-2.5-flash-image";
+        const data = await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+            signal: AbortSignal.timeout(300000),
+          headers: { "content-type": "application/json", "x-goog-api-key": settings.geminiKey },
           body: JSON.stringify({
             contents: [{ parts }],
             generationConfig: {
               responseModalities: ["TEXT", "IMAGE"],
-              imageConfig: { aspectRatio: state.config.geminiAspectRatio || "1:1" }
+              imageConfig: { aspectRatio: settings.geminiAspectRatio || "1:1" }
             }
           })
         });
@@ -1069,86 +595,6 @@ JSON 格式：
         const inline = imagePart?.inlineData || imagePart?.inline_data;
         if (!inline?.data) throw new Error("Gemini 没有返回图片数据");
         return `data:${inline.mimeType || inline.mime_type || "image/png"};base64,${inline.data}`;
-      }
-
-      async function mockImage(title, prompt, variant) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-          <defs>
-            <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stop-color="${variant === "old" ? "#b99265" : "#7fa7aa"}"/>
-              <stop offset="1" stop-color="${variant === "old" ? "#5e5147" : "#283a4a"}"/>
-            </linearGradient>
-            <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values=".25"/><feBlend mode="multiply" in2="SourceGraphic"/></filter>
-          </defs>
-          <rect width="1024" height="1024" fill="url(#bg)"/>
-          <rect x="82" y="92" width="860" height="840" rx="18" fill="rgba(255,255,255,.13)" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
-          <text x="112" y="180" fill="#fff" font-size="54" font-family="Arial, sans-serif" font-weight="700">${variant === "old" ? "旧照片" : "现在（2026年）"}</text>
-          <text x="112" y="250" fill="rgba(255,255,255,.92)" font-size="34" font-family="Arial, sans-serif">${escapeXml(title || "时间对照图")}</text>
-          <foreignObject x="112" y="330" width="800" height="480">
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font: 30px/1.45 Arial, sans-serif; color: white; opacity: .9;">${escapeXml(prompt).slice(0, 220)}</div>
-          </foreignObject>
-          <rect width="1024" height="1024" filter="url(#grain)" opacity="${variant === "old" ? ".32" : ".08"}"/>
-        </svg>`;
-        return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
-      }
-
-      async function generateImages(retry = false) {
-        const provider = $("#providerSelect").value;
-        const title = $("#selectedTitle").textContent || "2000年前后旧照片和现在（2026年）";
-        const decadePrompt = withOldPhotoTexture($("#decadePrompt").value.trim());
-        const lockGuide = buildTimeEditLockGuide();
-        const nowPrompt = `${lockGuide}
-
-${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
-
-【图2最终检查】
-再次确认：图片2的相机位置、裁切、透视、道路或院落几何、建筑主体、墙体、门窗开口、屋脊轮廓、成熟树主干和电线杆必须与图片1严格对齐。不要把自行车、盆、篮筐、工具、衣物、动物和零散杂物当作固定参照物；其中60%-90%应消失、移位、被替换或明显腐坏。检查是否有不规则杂草、跨材质老化，以及至少一种非表面变化；不能只做无人、冷色、落灰和褪色。`;
-        if (!$("#decadePrompt").value.trim() || !$("#nowPrompt").value.trim()) throw new Error("请先生成或填写两段提示词");
-
-        // 仅在请求条件完全一致时复用第一张，避免把新提示词与旧参考图混在一起。
-        const signature = JSON.stringify({ provider, decadePrompt, nowPrompt, ratio: $("#ratio").value, config: state.config });
-        const reuse = retry && flow.pair?.signature === signature && flow.pair.decadeUrl;
-        if (!reuse) {
-          clearImages(false);
-          flow.pair = { signature, provider, decadeUrl: null, nowUrl: null };
-        }
-        const pair = flow.pair;
-        const config = provider === "openai" || provider === "beihai" ? getOpenAIImageConfig(provider) : null;
-        if (!reuse) {
-          flow.steps.images.label = "生成旧照 · 第 1/2 张";
-          $("#decadePlaceholder").innerHTML = '<i class="spinner"></i>生成中';
-          $("#decadeImage").parentElement.classList.add("working");
-          renderFlow();
-          const started = performance.now();
-          pair.decadeUrl = config ? await imageFromOpenAI(decadePrompt, config)
-            : provider === "gemini" ? await imageFromGemini(decadePrompt) : await mockImage(title, decadePrompt, "old");
-          pair.oldMs = performance.now() - started;
-          setImage("#decadeImage", "#downloadDecade", pair.decadeUrl, "2000年前后旧照片.png");
-          $("#decadeTime").textContent = `完成 · ${formatTime(pair.oldMs)}`;
-        }
-        $("#resultStatus").textContent = "1 / 2 已完成";
-        flow.steps.images.label = "生成今照 · 第 2/2 张";
-        $("#nowPlaceholder").innerHTML = '<i class="spinner"></i>生成中';
-        $("#nowImage").parentElement.classList.add("working");
-        renderFlow();
-        const started = performance.now();
-        pair.nowUrl = config ? await imageEditFromOpenAI(nowPrompt, pair.decadeUrl, config)
-          : provider === "gemini" ? await imageFromGemini(nowPrompt, pair.decadeUrl) : await mockImage(title, nowPrompt, "now");
-        pair.nowMs = performance.now() - started;
-        setImage("#nowImage", "#downloadNow", pair.nowUrl, "现在（2026年）.png");
-        $("#nowTime").textContent = `完成 · ${formatTime(pair.nowMs)}`;
-        return { provider, decadeUrl: pair.decadeUrl, nowUrl: pair.nowUrl };
-      }
-
-      function setImage(selector, downloadSelector, url, fileName) {
-        const img = $(selector);
-        img.src = url;
-        img.closest("button").disabled = false;
-        img.parentElement.classList.remove("working");
-        const link = $(downloadSelector);
-        link.href = url;
-        link.download = fileName;
-        link.classList.remove("hidden");
       }
 
       function parseDataUrl(dataUrl) {
@@ -1165,32 +611,15 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
         return new Blob([bytes], { type: parsed.mimeType });
       }
 
-      function normalizeRatio(value) {
-        const text = String(value || "");
-        return ["4:5", "1:1", "9:16", "16:9"].find((ratio) => text.includes(ratio));
-      }
-
-      function withOldPhotoTexture(prompt) {
-        const text = String(prompt || "").trim();
-        if (!text) return oldPhotoTexture;
-        return text.includes("2000年前后彩色冲印照片翻拍质感") ? text : `${text}\n\n${oldPhotoTexture}`;
-      }
-
-      function withCurrentPhoneTexture(prompt) {
-        const text = String(prompt || "").trim();
-        if (!text) return currentPhoneTexture;
-        return text.includes("现在（2026年）照片质感") ? text : `${text}\n\n${currentPhoneTexture}`;
-      }
-
       function providerName(provider) {
-        return { beihai: "北海 AI", openai: "OpenAI", gemini: "Gemini", mock: "Mock" }[provider] || provider;
+        return { beihai: "北海 AI", openai: "OpenAI", gemini: "Gemini", mock: "本地演示" }[provider] || provider;
       }
 
       function friendlyError(error) {
         const message = error?.message || "请求失败";
         const suffix = [error?.status ? `HTTP ${error.status}` : "", error?.requestId ? `请求编号 ${error.requestId}` : ""].filter(Boolean).join(" · ");
         const detail = suffix ? `（${suffix}）` : "";
-        if (error?.name === "TimeoutError" || error?.name === "AbortError") return "文本请求超时（已等待 3 分钟）。请稍后重试，或切换其他文本模型；原有提示词不会被清空。";
+        if (error?.name === "TimeoutError" || error?.name === "AbortError") return "本次请求超时。已完成步骤会保留，可以重试当前步骤。";
         if (error?.status === 401 || error?.status === 403) return `接口拒绝访问，请检查 Key 和模型权限。${detail}`;
         if (error?.status === 429) return `接口请求过于频繁或额度受限，请稍后重试并检查额度。${detail}`;
         if (message === "openai_error" || error?.code === "openai_error" || error?.status >= 500) {
@@ -1216,142 +645,16 @@ ${withCurrentPhoneTexture($("#nowPrompt").value.trim())}
         return escapeHtml(value);
       }
 
-      $("#toggleConfig").addEventListener("click", () => $("#configPanel").showModal());
-      $("#textProvider").addEventListener("change", updateConfigPanels);
-      $("#defaultProvider").addEventListener("change", updateConfigPanels);
-      $("#saveConfig").addEventListener("click", () => { saveConfig(); $("#configPanel").close(); notify("配置已保存"); });
-      $("#clearConfig").addEventListener("click", clearConfig);
-      $("#providerSelect").addEventListener("change", () => {
-        $("#defaultProvider").value = $("#providerSelect").value;
-        updateConfigPanels();
-        state.config.defaultProvider = $("#providerSelect").value;
-        localStorage.setItem(storageKey, JSON.stringify({ ...state.config }));
-        updateKeyStatus();
-      });
-      $("#ideaForm").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        if (!startFlow("ideas", "正在生成灵感")) return;
-        let failure;
-        try {
-          const data = await buildIdeas({ brief: $("#brief").value.trim(), theme: $("#theme").value, emotion: $("#emotion").value, platform: $("#platform").value, count: $("#count").value });
-          if (!Array.isArray(data.ideas) || !data.ideas.length) throw new Error("模型没有返回灵感，请重试。");
-          state.ideas = data.ideas;
-          state.selectedIdea = state.ideas[0];
-          $("#selectedTitle").textContent = state.selectedIdea.title || "";
-          clearPrompts();
-          renderIdeas();
-        } catch (error) { failure = error; }
-        finally { finishFlow("ideas", failure); }
-      });
-      $("#openTitles").addEventListener("click", () => $("#titlesDialog").showModal());
-      $("#titleButton").addEventListener("click", async () => {
-        if (!startFlow("titles", "正在生成标题")) return;
-        let failure;
-        try {
-          const data = await buildVideoTitles({ brief: $("#brief").value.trim(), theme: $("#theme").value, emotion: $("#emotion").value, platform: $("#platform").value, count: $("#count").value });
-          if (!data.titles?.length) throw new Error("模型没有返回标题，请重试。");
-          state.titles = data.titles;
-          renderTitles();
-        } catch (error) { failure = error; }
-        finally { finishFlow("titles", failure); }
-      });
-      for (const id of ["generatePromptButton", "promptButton"]) $("#" + id).addEventListener("click", () => fillPromptPack(state.selectedIdea));
-      $("#copyPromptButton").addEventListener("click", async () => {
-        try { await copyText(buildPromptCopyText()); notify("合图提示词已复制"); }
-        catch (error) { notify(friendlyError(error)); }
-      });
-      async function runImages(retry = false) {
-        if (!startFlow("images", "正在准备图片")) return;
-        let failure;
-        $("#retryImageButton").classList.add("hidden");
-        try {
-          await generateImages(retry);
-          $("#resultStatus").textContent = "2 / 2 已完成";
-        } catch (error) {
-          failure = error;
-          const hasOld = Boolean(flow.pair?.decadeUrl);
-          $("#resultStatus").textContent = hasOld ? "1 / 2 已保留" : "生成失败";
-          $("#retryImageButton").classList.toggle("hidden", !hasOld);
-          $(hasOld ? "#nowPlaceholder" : "#decadePlaceholder").textContent = "生成失败";
-        } finally {
-          document.querySelectorAll(".photo-surface").forEach((el) => el.classList.remove("working"));
-          finishFlow("images", failure);
-        }
-      }
-      $("#imageButton").addEventListener("click", () => runImages());
-      $("#retryImageButton").addEventListener("click", () => runImages(true));
-      $("#ideaDetailButton").addEventListener("click", () => {
-        if (!state.selectedIdea) return;
-        const content = document.createElement("div");
-        for (const [key, label] of [["story", "故事"], ["anchorObject", "场景锚点"], ["oldLifeDetails", "旧照"], ["nowDecayDetails", "现在"], ["hook", "共情点"]]) {
-          if (!state.selectedIdea[key]) continue;
-          const paragraph = document.createElement("p");
-          paragraph.className = "detail-copy";
-          paragraph.textContent = `${label}：${state.selectedIdea[key]}`;
-          content.append(paragraph);
-        }
-        showDetail(state.selectedIdea.title || "灵感详情", content);
-      });
-      document.querySelectorAll("[data-editor]").forEach((button) => button.addEventListener("click", () => {
-        flow.editor = button.dataset.editor;
-        $("#editorTitle").textContent = { decadePrompt: "旧照片提示词", nowPrompt: "现在照片提示词", caption: "配文" }[flow.editor];
-        $("#editorText").value = $("#" + flow.editor).value;
-        $("#editorDialog").showModal();
-      }));
-      $("#editorSave").addEventListener("click", () => {
-        const field = $("#" + flow.editor);
-        if (field.value !== $("#editorText").value) {
-          field.value = $("#editorText").value;
-          if (flow.editor !== "caption") clearImages();
-          refreshPreviews();
-        }
-        $("#editorDialog").close();
-      });
-      document.querySelectorAll("[data-photo]").forEach((button) => button.addEventListener("click", () => {
-        const original = $("#" + button.dataset.photo);
-        if (!original.hasAttribute("src")) return;
-        const image = document.createElement("img");
-        image.src = original.src;
-        image.alt = original.alt;
-        image.className = "photo-enlarged";
-        showDetail(original.alt, image);
-      }));
-      $("#exportButton").addEventListener("click", () => {
-        const content = document.createElement("div");
-        content.className = "export-actions";
-        for (const [id, label] of [["downloadDecade", "下载旧照片"], ["downloadNow", "下载现在照片"]]) {
-          const original = $("#" + id);
-          if (original.classList.contains("hidden")) continue;
-          const link = original.cloneNode(true);
-          link.removeAttribute("id");
-          link.textContent = label;
-          link.className = "secondary";
-          content.append(link);
-        }
-        const captionButton = document.createElement("button");
-        captionButton.textContent = "下载配文";
-        captionButton.addEventListener("click", () => {
-          const url = URL.createObjectURL(new Blob([$("#caption").value], { type: "text/plain;charset=utf-8" }));
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = "配文.txt";
-          link.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        });
-        content.append(captionButton);
-        showDetail("下载作品", content);
-      });
-      document.querySelectorAll("dialog").forEach((dialog) => {
-        dialog.querySelector(".close").addEventListener("click", () => dialog.close());
-        dialog.addEventListener("click", (event) => {
-          if (event.target !== dialog) return;
-          const rect = dialog.getBoundingClientRect();
-          if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
-        });
-      });
-
+      window.TimeEchoModels = {getConfig:()=>({...state.config}), defaults, loadConfig, saveConfig, clearConfig, getTextModelConfig, getOpenAIImageConfig, callTextModel, imageFromOpenAI, imageEditFromOpenAI, imageFromGemini, extractJson, dataUrlToBlob, copyText, friendlyError, escapeHtml, formatTime, notify, updateKeyStatus};
+      $("#textProvider").addEventListener("change",updateConfigPanels);
+      $("#defaultProvider").addEventListener("change",updateConfigPanels);
+      $("#saveConfig").addEventListener("click",()=>{saveConfig();$("#configPanel").close();document.dispatchEvent(new Event("timeecho-config"));notify("模型配置已保存");});
+      $("#clearConfig").addEventListener("click",()=>{clearConfig();document.dispatchEvent(new Event("timeecho-config"));});
+      document.querySelectorAll("dialog").forEach(dialog=>{dialog.querySelector(".close")?.addEventListener("click",()=>dialog.close());dialog.addEventListener("click",event=>{if(event.target!==dialog)return;const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();});});
       loadConfig();
-      refreshPreviews();
     </script>
+    <script src="batch-core.js"></script>
+    <script src="batch-prompts.js"></script>
+    <script src="batch-app.js"></script>
   </body>
 </html>
