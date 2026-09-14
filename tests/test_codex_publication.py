@@ -30,7 +30,7 @@ class PublicationTests(unittest.TestCase):
                      "description": "AI 创作场景", "hashtags": ["旧时光"],
                      "settings": {"location": "不显示位置", "collection": "旧时光", "link": None,
                                   "activity": "不参与活动", "schedule": "不定时", "original_requested": True,
-                                  "ai_label": "含AI生成内容"}}
+                                  "ai_label": "内容为虚构剧情，仅供娱乐"}}
 
     def call(self, action, payload=None, **kwargs):
         path = self.root / "input.json"

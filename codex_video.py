@@ -487,7 +487,7 @@ class Workspace:
             raise ValueError("hashtags 必须是字符串数组")
         expected = {"location": "不显示位置", "collection": "旧时光", "link": None,
                     "activity": "不参与活动", "schedule": "不定时", "original_requested": True,
-                    "ai_label": "含AI生成内容"}
+                    "ai_label": "内容为虚构剧情，仅供娱乐"}
         if info.get("settings") != expected:
             raise ValueError("发布设置与本项目用户指定的截图不一致")
         info = {k: info[k] for k in ("run_id", "video", "short_title", "description", "hashtags", "settings")}

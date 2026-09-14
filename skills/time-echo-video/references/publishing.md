@@ -1,6 +1,6 @@
 # 视频号自动发布与交付
 
-本项目用户已明确要求：视频完成后，用项目 `打开视频号.bat` 打开 Edge 视频号；需要登录时通过 Telegram 向本人发送实际登录二维码，等待网页确认登录成功，再按参考截图填写内容并点击发布。此授权适用于本技能每轮完成的视频，无需每轮再次询问是否发布。由 Codex 操作浏览器；本地 Python 只维护发布资料、进度和重复提交保护，不代替浏览器完成登录、上传或发表。
+本项目用户已明确要求：视频完成后，由固定脚本打开 Edge 视频号；需要登录时通过 Telegram 向本人发送实际登录二维码，等待网页确认登录成功，再按参考截图填写内容并点击“发表”。此授权适用于本技能每轮完成的视频，无需每轮再次询问是否发布。Codex 负责准备本轮视频与发布资料，`publish_video.py` 负责登录判断、二维码通知、上传、填表、提交和平台结果检查；正常发布不由 Codex逐项操作网页。
 
 设置参考：[用户提供的发布页面截图](../assets/video-publish-settings.png)。按当前页面控件识别操作，不照搬截图坐标。浏览器工具或网站当次明确拒绝访问时，保留成片并记录实际阻塞；不绕过限制，也不把某次失败写成永久站点结论。
 
@@ -40,54 +40,32 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
     "activity": "不参与活动",
     "schedule": "不定时",
     "original_requested": true,
-    "ai_label": "含AI生成内容"
+    "ai_label": "内容为虚构剧情，仅供娱乐"
   }
 }
 ```
 
 用 `publish-init` 登记后按返回的 `info` 填表，不能在重试时换成另一条视频或另一份文案。首次提交前需要按页面字数限制调整文案时，更新本轮资料并再次 publish-init，重新登记 uploading、核对表单并 ready；不能换视频或修改进度绕过检查。
 
-## 打开 Edge、发送二维码并等登录
+## 固定脚本执行发布
 
-1. 复用已经由本轮打开的 Edge 视频号标签；没有时在项目目录执行用户提供的启动器：`& '.\打开视频号.bat'`。该脚本只打开 `https://channels.weixin.qq.com/platform`，不会自动上传或发布。
-2. 用浏览器工具列出可控制页面，接入启动器打开的 Edge 标签。Edge 未连接时记录 blocked 并通过 Telegram 说明需接通 Edge 浏览器控制，不能声称已看到二维码或已登录；用户已指定改用 Edge，不自行换用其他浏览器。
-3. 若已登录，记录当前视频号名称并进入发表页面。若显示登录二维码，保存当前真实页面截图为本批次的 `login-qr-<序号>.png`，用视觉检查确认二维码完整、清晰、未过期，随后登记 waiting_login。只发送登录所需截图，不包含浏览器其他页面或无关个人信息。
-4. 加载 `$telegram-notify` 并运行 `status`。已 ready 时，用 `--kind document` 将二维码 PNG 发给已绑定本人私聊，避免图片压缩；说明这是本次视频号登录、需要本人用微信扫码并在手机确认。正文保存在本批次 `telegram-login-<序号>.txt`，事件键为 `time-echo:<run_id>:login-qr:<序号>`。保存工具的真实发送回执到 `notification-receipts.json`，追加记录，不能覆盖已有回执。通知未配置或发送失败时，保留 waiting_login 和二维码，在当前任务说明，不能声称手机已收到。
-5. 发送后持续等待用户操作，每隔约 15 秒读取 Edge 的真实页面状态；每次等待不超过 60 秒。扫码提示、用户说“扫了”或 Telegram 回执都不等于登录成功，必须看到已登录后台和视频号身份才继续。无需读取 Telegram 回复。
-6. 页面明确提示二维码过期时刷新取得新码、增加序号并发送一次；同一码不因轮询而重发。网络发送结果不确定时遵守通知技能的去重规则，不擅自换事件键补发。Edge 控制丢失或工具明确不可用时保存阻塞并报告；用户主动停止或任务中断则保留断点供下次恢复。
-
-二维码发送命令：
+1. 确认已安装 `requirements-publish.txt` 中的依赖；当前机器使用 `C:/Python313/python.exe`。需要只检查连接和当前页面时运行 `C:/Python313/python.exe publish_video.py --probe`，该模式不发送二维码、不上传、不填表、不发布。
+2. 正常发布只运行一次：`C:/Python313/python.exe publish_video.py --run <批次> --token <执行凭证>`。脚本会按需调用 `打开视频号.bat`，以 `%LOCALAPPDATA%/CodexVideoPublisher/EdgeProfile` 启动独立、可持久保存登录状态的 Edge，并打开 `https://channels.weixin.qq.com/platform/post/create`。
+3. 页面跳到 `https://channels.weixin.qq.com/login.html` 时，脚本处理“加载失败，点击重试”，从微信 OAuth iframe 截取可见二维码，以 `document` 调用 Telegram CLI发送，随后等待网页离开登录页。仍未登录时每隔 60 秒重新加载登录页，截取二维码并通过回调发送新码，不限制刷新次数；总等待时间仍受 `--login-timeout` 限制（默认 900 秒），刷新不会重置总超时。同一码复用同一事件键。每次获取新码前清理旧二维码截图和临时说明文件，登录成功、超时或异常退出登录等待时也会清理，包括未完成的截图文件。
+4. 页面已登录时，脚本直接进入发表动态页，上传 `info.video`，填写描述、话题、短标题和本项目固定设置，等待上传完成及“发表”按钮可用。
+5. 脚本通过现有 `codex_video.py` 状态机依次登记 `uploading`、`ready`、`submitting`、`published`。`submitting` 必须先落盘才点击一次“发表”；点击后没有明确结果时登记 `uncertain`，后续执行不会再次点击。
+6. 首次校准页面可使用 `--dry-run`：它会真实上传并填表，但停在 `ready`，不点击“发表”。正常定时任务不要使用 `--dry-run`。
+7. 脚本输出单行 JSON。`PUBLISHED` 表示已有平台成功证据；`READY` 表示试运行停在提交前；`LOGIN_TIMEOUT`、`QR_NOT_FOUND`、`FORM_CONTROL_NOT_FOUND` 等表示本轮已保留进度；`UNCERTAIN_SUBMISSION` 表示提交结果不明，只能核对平台作品，禁止直接重跑提交。
 
 ```powershell
-C:/Python313/python.exe skills/telegram-notify/scripts/telegram_notify.py send --event <本批次二维码事件键> --text-file <登录说明TXT> --kind document --file <真实二维码PNG>
+C:/Python313/python.exe publish_video.py --probe
+C:/Python313/python.exe publish_video.py --run <批次> --token <执行凭证>
+C:/Python313/python.exe publish_video.py --run <批次> --token <执行凭证> --dry-run
 ```
 
-截图保存、上传文件都必须使用当前工具实际支持的能力；无法导出二维码文件或操作文件选择器时，报告具体缺失能力，不宣称已完成，不猜测工具 API。
+## 发布结果与交付
 
-## 上传、填写并发表
-
-1. 在已登录 Edge 中打开发布视频页面，登记 uploading，用文件上传控件选择 `info.video`。等待实际上传和处理完成，核对预览确为本轮视频；不要把仅选中文件当成上传成功。
-2. 填入本轮视频描述、话题与短标题。话题控件若需要点选确认，完成实际选择；不填截图中的占位文字。字数、话题数量按当前页面提示调整，调整内容需保持本轮主题和 AI 标识。
-3. 逐项设置：位置“不显示位置”；合集“旧时光”；链接留空；活动“不参与活动”；发表“不定时”；按用户要求勾选“声明原创”；视频标注“含AI生成内容”。合集不存在时报告具体问题，不擅自新建或选择其他合集。若页面出现额外协议或工具要求用户处理的步骤，保存已填内容并按实际要求处理。
-4. 重新查看表单和预览，把实际账号、视频、文案与所有设置的核对结果写入 ready 事件。下面是结构示例，checks 必须由当前页面观察填写，不能复制示例当作已核对。
-
-```json
-{
-  "status": "ready",
-  "account": "实际视频号名称",
-  "checks": {
-    "video": true, "upload_complete": true, "description": true,
-    "short_title": true, "location": true, "collection": true,
-    "link": true, "activity": true, "schedule": true,
-    "original": true, "ai_label": true
-  },
-  "evidence": "实际看到的文件、表单值和可点击的发布按钮；附本轮截图路径"
-}
-```
-
-5. 点击发布前核对占用，先成功登记 submitting 事件，再点击一次“发布”。用户已授权这一步，不增加重复的发布确认。按页面提示完成正常发表流程并等待结果。
-6. 页面显示发表成功，或作品列表出现与账号、本轮标题、视频及时间匹配的记录后，登记 published，并在事件 `receipt` 字符串中保存成功提示、作品 ID/地址或匹配记录及截图路径。若平台显示审核中，如实记录审核中，不能称已经公开可见；若明确拒绝发表或结果无法确认，登记 uncertain 并核实，不重复点击。
-7. 将发布结果通过 Telegram 发给本人，事件键 `time-echo:<run_id>:published`，提供标题、账号、平台状态与可用作品链接。没有平台成功证据时，不能发送“发布成功”。
+脚本登记 `published` 后，将发布结果通过 Telegram 发给本人，事件键 `time-echo:<run_id>:published`，提供标题、账号、平台状态与可用作品链接。没有平台成功证据时，不能发送“发布成功”。
 
 ## 成片通知与结束
 
