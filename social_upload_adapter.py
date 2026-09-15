@@ -78,14 +78,26 @@ class QRCallback:
 
 class StrictForm:
     """Async form verification on the actual upstream upload page, failing closed."""
+    LOCATION_VALUE = ".position-display .location-name, .position-display .not-display"
+    COLLECTION_VALUE = ".post-album-display .display-text, .post-album-display .collection-text"
+
     def __init__(self, page):
         self.page = page
 
-    async def unique(self, selector):
+    async def unique(self, selector, timeout=10000):
         item = self.page.locator(selector)
-        if await item.count() != 1 or not await item.is_visible():
-            raise PublishError("FORM_CONTROL_NOT_FOUND", selector)
-        return item
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while True:
+            visible = []
+            for index in range(await item.count()):
+                candidate = item.nth(index)
+                if await candidate.is_visible():
+                    visible.append(candidate)
+            if len(visible) == 1:
+                return visible[0]
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_CONTROL_NOT_FOUND", selector)
+            await self.page.wait_for_timeout(200)
 
     async def text(self, selector):
         return (await (await self.unique(selector)).inner_text()).strip()
@@ -112,8 +124,8 @@ class StrictForm:
         title = await self.unique('[placeholder="填写短标题有机会获得更多流量"]')
         await title.fill(info["short_title"])
         for display, trigger, options, value in (
-            (".position-display .location-name", ".position-display", ".location-filter-wrap .option-item", s["location"]),
-            (".post-album-display .display-text", ".post-album-display", ".post-album-wrap .filter-wrap .option-item", s["collection"]),
+            (self.LOCATION_VALUE, ".position-display", ".location-filter-wrap .option-item", s["location"]),
+            (self.COLLECTION_VALUE, ".post-album-display", ".post-album-wrap .filter-wrap .option-item", s["collection"]),
             (".activity-display", ".activity-display", ".activity-filter-wrap .option-item", s["activity"]),
             (".mark-tag-select .select-value", ".mark-tag-select .select-display", ".mark-tag-option .option-main", s["ai_label"]),
         ):
@@ -137,8 +149,8 @@ class StrictForm:
                   "short_title": await title.input_value() == info["short_title"],
                   "schedule": await radio.is_checked(), "original": await original.is_checked()}
         checks.update({
-            "location": await self.text('.position-display .location-name') == s['location'],
-            "collection": await self.text('.post-album-display .display-text') == s['collection'],
+            "location": await self.text(self.LOCATION_VALUE) == s['location'],
+            "collection": await self.text(self.COLLECTION_VALUE) == s['collection'],
             "link": await self.text('.link-display-wrap') == '选择链接',
             "activity": await self.text('.activity-display') == s['activity'],
             "ai_label": await self.text('.mark-tag-select .select-value') == s['ai_label'],

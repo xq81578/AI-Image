@@ -175,5 +175,23 @@ class SocialTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Patchright version mismatch'):
                 adapter.load_tencent()
 
+    def test_unique_waits_for_transient_control_and_returns_visible_match(self):
+        class DelayedLocator:
+            def __init__(self): self.calls = 0
+            async def count(self):
+                self.calls += 1
+                return 0 if self.calls == 1 else 1
+            def nth(self, index): return self
+            async def is_visible(self): return True
+        locator = DelayedLocator()
+        page = SimpleNamespace(locator=lambda selector: locator, wait_for_timeout=AsyncMock())
+        result = asyncio.run(StrictForm(page).unique('.value', timeout=1000))
+        self.assertIs(result, locator)
+        page.wait_for_timeout.assert_awaited_once_with(200)
+
+    def test_selected_location_and_collection_value_selectors_are_supported(self):
+        self.assertIn('.not-display', StrictForm.LOCATION_VALUE)
+        self.assertIn('.collection-text', StrictForm.COLLECTION_VALUE)
+
 
 if __name__ == '__main__': unittest.main()
