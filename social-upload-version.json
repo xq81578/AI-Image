@@ -1,0 +1,7 @@
+{
+  "upstream_sha": "0012d2c355f88f683cc38dde2a2db209e14091bc",
+  "patched_files": {
+    "uploader/tencent_uploader/main.py": "ca5c983257fc6da6da255f9e5be8ec10117b505afc4eaf611c467d962e731617",
+    "utils/login_qrcode.py": "cfd3d03d8e1081744607bcd9e7f1fc2b1c6b13884e228641b43cc8c3fcf481bc"
+  }
+}

@@ -5,3 +5,7 @@ __pycache__/
 /tools/
 /bgm/*
 /outputs/codex-time-echo/
+
+/social-auto-upload/
+.venv-social/
+/.social-upload-account/
