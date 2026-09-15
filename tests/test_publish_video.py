@@ -513,18 +513,46 @@ for (const composed of [true, false]) {
                                    text=True, capture_output=True, timeout=15)
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
+    def test_readiness_accepts_preview_and_completion_signal(self):
+        channels = publisher.ChannelsPage(Mock())
+        channels.uploaded_video = ('video.mp4', 5)
+        button = Mock(count=lambda: 1)
+        button.count.return_value = 1
+        button.get_attribute.return_value = ''
+        button.is_visible.return_value = True
+        button.is_enabled.return_value = True
+        channels._publish_button = Mock(return_value=button)
+        channels._visible_text = Mock(return_value=False)
+        frame = Mock()
+        channels._content_frame = Mock(return_value=frame)
+        def locator(selector):
+            item = Mock()
+            item.count.return_value = 1 if 'video' in selector else 0
+            item.nth.return_value.is_visible.return_value = True
+            return item
+        frame.locator.side_effect = locator
+        self.assertTrue(channels._upload_ready())
+
     def test_readiness_requires_current_upload_and_no_processing(self):
         channels = publisher.ChannelsPage(Mock())
         button = Mock()
         button.count.return_value = 1
         button.get_attribute.return_value = ''
-        channels._publish_button = Mock(return_value=button)
+        button.is_visible.return_value = True
+        button.is_enabled.return_value = True
         channels._visible_text = Mock(return_value=False)
+        channels._content_frame = Mock(return_value=Mock())
+        channels._content_frame.return_value.locator.return_value.count.return_value = 0
         self.assertFalse(channels._upload_ready())
         with self.assertRaisesRegex(publisher.PublishError, '缺少本轮'):
             channels.wait_until_ready()
         channels.uploaded_video = ('video.mp4', 5)
-        self.assertTrue(channels._upload_ready())
+        def state_locator(selector):
+            item = Mock()
+            item.count.return_value = 0 if 'progress' in selector or 'preview' in selector or 'success' in selector else 0
+            return item
+        channels._content_frame.return_value.locator.side_effect = state_locator
+        self.assertFalse(channels._upload_ready())
         for busy in ('上传中', '处理中', '转码中'):
             channels._visible_text.side_effect = lambda text: text == busy
             self.assertFalse(channels._upload_ready())
@@ -535,7 +563,10 @@ for (const composed of [true, false]) {
     def test_form_checks_rejects_processing_even_with_enabled_button(self):
         channels = publisher.ChannelsPage(Mock())
         channels.uploaded_video = ('video.mp4', 5)
-        channels._visible_text = Mock(return_value=True)
+        channels._visible_text = Mock(return_value=False)
+        frame = Mock()
+        channels._content_frame = Mock(return_value=frame)
+        frame.locator.return_value.count.return_value = 0
         channels._publish_button = Mock()
         channels._publish_button.return_value.count.return_value = 1
         channels._publish_button.return_value.get_attribute.return_value = ''

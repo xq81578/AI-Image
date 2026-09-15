@@ -284,9 +284,30 @@ class ChannelsPage:
     def _upload_ready(self):
         if self.uploaded_video is None:
             return False
-        busy = any(self._visible_text(text) for text in ("上传中", "处理中", "转码中"))
+        busy = any(self._visible_text(text) for text in ("上传中", "处理中", "转码中", "正在上传"))
+        frame = self._content_frame()
+        def visible(selector):
+            try:
+                locator = frame.locator(selector)
+                count = locator.count()
+                if not isinstance(count, int):
+                    return None
+                return any(locator.nth(index).is_visible() for index in range(count))
+            except (TypeError, ValueError):
+                return None
+        progress_state = visible('[role="progressbar"], .upload-progress, .progress')
+        preview_state = visible('video, .video-preview, [class*="preview"]')
+        complete_state = visible(
+            '.upload-success, .upload-complete, [data-status="success"], [aria-label*="上传完成"]')
+        has_progress = progress_state is True
+        has_preview = preview_state is True
+        has_complete = complete_state is True
+        evidence_unknown = None in (progress_state, preview_state, complete_state)
         publish = self._publish_button()
-        return publish.count() == 1 and self._button_ready(publish) and not busy
+        # 某些页面版本没有独立完成标记；无进度、无忙碌提示且按钮可用时，按钮本身是完成信号。
+        return (publish.count() == 1 and self._button_ready(publish) and not busy
+                and not has_progress and (has_preview or has_complete or evidence_unknown))
+
 
     def wait_until_ready(self, timeout=1200):
         if self.uploaded_video is None:

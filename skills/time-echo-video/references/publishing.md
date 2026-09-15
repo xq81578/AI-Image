@@ -52,7 +52,7 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 1. 确认已安装 `requirements-publish.txt` 中的依赖；当前机器使用 `C:/Python313/python.exe`。需要只检查连接和当前页面时运行 `C:/Python313/python.exe publish_video.py --probe`，该模式不发送二维码、不上传、不填表、不发布。
 2. 正常发布只运行一次：`C:/Python313/python.exe publish_video.py --run <批次> --token <执行凭证>`。脚本会按需调用 `打开视频号.bat`，以 `%LOCALAPPDATA%/CodexVideoPublisher/EdgeProfile` 启动独立、可持久保存登录状态的 Edge，并打开 `https://channels.weixin.qq.com/platform/post/create`。
 3. 页面跳到 `https://channels.weixin.qq.com/login.html` 时，脚本处理“加载失败，点击重试”，从微信 OAuth iframe 截取可见二维码，以 `document` 调用 Telegram CLI发送，随后等待网页离开登录页。仍未登录时每隔 60 秒重新加载登录页，截取二维码并通过回调发送新码，不限制刷新次数；总等待时间仍受 `--login-timeout` 限制（默认 900 秒），刷新不会重置总超时。同一码复用同一事件键。每次获取新码前清理旧二维码截图和临时说明文件，登录成功、超时或异常退出登录等待时也会清理，包括未完成的截图文件。
-4. 页面已登录时，脚本直接进入发表动态页，上传 `info.video`，填写描述、话题、短标题和本项目固定设置，等待上传完成及“发表”按钮可用。
+4. 页面已登录时，脚本直接进入发表动态页，上传 `info.video`，填写描述、话题、短标题和本项目固定设置。上传采用页面实际的分段处理流程；脚本以短周期轮询检查上传进度是否消失、视频预览或完成标记是否出现，以及“发表”按钮是否可用，只有取得这些完成信号后才继续核验表单。
 5. 脚本通过现有 `codex_video.py` 状态机依次登记 `uploading`、`ready`、`submitting`、`published`。`submitting` 必须先落盘才点击一次“发表”；点击后没有明确结果时登记 `uncertain`，后续执行不会再次点击。
 6. 首次校准页面可使用 `--dry-run`：它会真实上传并填表，但停在 `ready`，不点击“发表”。正常定时任务不要使用 `--dry-run`。
 7. 脚本输出单行 JSON。`PUBLISHED` 表示已有平台成功证据；`READY` 表示试运行停在提交前；`LOGIN_TIMEOUT`、`QR_NOT_FOUND`、`FORM_CONTROL_NOT_FOUND` 等表示本轮已保留进度；`UNCERTAIN_SUBMISSION` 表示提交结果不明，只能核对平台作品，禁止直接重跑提交。
