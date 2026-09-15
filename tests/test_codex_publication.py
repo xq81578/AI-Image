@@ -112,7 +112,7 @@ class PublicationTests(unittest.TestCase):
         before = (self.folder / "publish-progress.json").read_bytes()
         self.assertEqual(self.call("publish-init", self.info)["status"], "submitting")
         self.assertEqual((self.folder / "publish-progress.json").read_bytes(), before)
-        altered = {**self.info, "short_title": "新标题"}
+        altered = {**self.info, "short_title": "旧日街巷难再回", "description": "旧日街巷，难再回。"}
         with self.assertRaises(ValueError):
             self.call("publish-init", altered)
 
@@ -128,6 +128,17 @@ class PublicationTests(unittest.TestCase):
             self.step("ready", account="测试视频号", checks=checks)
         self.step("ready", account="测试视频号", checks=checks, confirmed_not_submitted=True)
         self.step("submitting")
+
+    def test_reconciled_not_submitted_can_amend_copy_before_retry(self):
+        self.ready()
+        self.step("submitting")
+        self.step("uncertain")
+        checks = {k: True for k in PUBLISH_CHECKS}
+        self.step("ready", account="测试视频号", checks=checks, confirmed_not_submitted=True)
+        amended = {**self.info, "short_title": "旧日街巷难再回", "description": "旧日街巷，难再回。"}
+        result = self.call("publish-init", amended)
+        self.assertEqual(result["status"], "prepared")
+        self.assertEqual(result["info"]["short_title"], "旧日街巷难再回")
 
     def test_published_requires_receipt_and_is_terminal(self):
         self.ready()

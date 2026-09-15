@@ -45,7 +45,7 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 }
 ```
 
-用 `publish-init` 登记后按返回的 `info` 填表，不能在重试时换成另一条视频或另一份文案。首次提交前需要按页面字数限制调整文案时，更新本轮资料并再次 publish-init，重新登记 uploading、核对表单并 ready；不能换视频或修改进度绕过检查。
+用 `publish-init` 登记后按返回的 `info` 填表，不能在普通重试时换成另一条视频或另一份文案。首次提交前需要按页面字数限制调整文案时，更新本轮资料并再次 publish-init，重新登记 uploading、核对表单并 ready。若提交结果曾为 uncertain，只有先取得明确的未提交证据并以 `confirmed_not_submitted: true` 恢复 ready，才允许修正文案后重新 publish-init；视频仍禁止更换，不能修改进度绕过检查。
 
 ## 固定脚本执行发布
 

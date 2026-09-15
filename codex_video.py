@@ -517,7 +517,11 @@ class Workspace:
             if progress["info"] == info:
                 return progress
             if any(e["status"] == "submitting" for e in progress["events"]):
-                raise ValueError("已经尝试提交，不能覆盖原发布资料")
+                latest = progress["events"][-1] if progress["events"] else {}
+                reconciled = (progress["status"] == "ready" and latest.get("status") == "ready"
+                              and latest.get("confirmed_not_submitted") is True)
+                if not reconciled:
+                    raise ValueError("已经尝试提交；只有明确确认未提交成功后才能修改发布资料")
         if progress["status"] not in ("not_started", "awaiting_publish", "prepared", "waiting_login", "uploading", "ready", "blocked"):
             raise ValueError("当前发布状态不允许初始化")
         progress.update(run_id=data["run_id"], status="prepared", info=info, video_sha256=video_hash)
