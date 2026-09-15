@@ -205,18 +205,50 @@ class ChannelsPage:
         raise PublishError("PAGE_CHANGED", "视频号发表动态内容页面未正常加载")
 
     def upload(self, video):
+        self.uploaded_video = None
+        expected = [{"name": video.name, "size": video.stat().st_size}]
         inputs = self._content_frame().locator('input[type="file"][accept*="video"]')
         if inputs.count() != 1:
             raise PublishError("UPLOAD_CONTROL_NOT_FOUND", "未找到唯一的视频上传控件")
-        inputs.set_input_files(str(video))
-        selected = inputs.evaluate("""input => {
-            const file = input.files && input.files[0];
-            return file ? {name: file.name, size: file.size} : null;
-        }""")
-        expected = {"name": video.name, "size": video.stat().st_size}
-        if selected != expected:
-            raise PublishError("UPLOAD_VALUE_MISMATCH", "视频上传控件未保留本轮文件")
-        self.uploaded_video = (selected["name"], selected["size"])
+        # 固定原节点，避免 locator 在上传前后自动指向网站重建的新控件。
+        original = inputs.element_handle()
+        if original is None:
+            raise PublishError("UPLOAD_CONTROL_NOT_FOUND", "视频上传控件已消失")
+        record = None
+        try:
+            # 在网站的目标/冒泡处理器清空 files 前捕获；独立 JSHandle 在节点
+            # 被移除后仍保留本次记录。composedPath 同时支持 shadow DOM。
+            record = original.evaluate_handle("""input => {
+                const view = input.ownerDocument.defaultView;
+                const record = {files: null};
+                const capture = event => {
+                    if (event.composedPath()[0] !== input || record.files !== null) return;
+                    record.files = Array.from(input.files || [],
+                        file => ({name: file.name, size: file.size}));
+                };
+                const root = input.getRootNode();
+                view.addEventListener('change', capture, true);
+                root.addEventListener('change', capture, true);
+                record.stop = () => {
+                    view.removeEventListener('change', capture, true);
+                    root.removeEventListener('change', capture, true);
+                };
+                return record;
+            }""")
+            original.set_input_files(str(video))
+            selected = record.evaluate("record => record.files")
+            if selected != expected:
+                raise PublishError("UPLOAD_VALUE_MISMATCH", "未捕获原上传控件接收本轮文件的证据")
+        finally:
+            try:
+                if record is not None:
+                    try:
+                        record.evaluate("record => record.stop()")
+                    finally:
+                        record.dispose()
+            finally:
+                original.dispose()
+        self.uploaded_video = (selected[0]["name"], selected[0]["size"])
 
     @staticmethod
     def description_text(info):
@@ -249,15 +281,21 @@ class ChannelsPage:
         return (button.is_visible() and button.is_enabled()
                 and "weui-desktop-btn_disabled" not in classes)
 
+    def _upload_ready(self):
+        if self.uploaded_video is None:
+            return False
+        busy = any(self._visible_text(text) for text in ("上传中", "处理中", "转码中"))
+        publish = self._publish_button()
+        return publish.count() == 1 and self._button_ready(publish) and not busy
+
     def wait_until_ready(self, timeout=1200):
+        if self.uploaded_video is None:
+            raise PublishError("UPLOAD_VALUE_MISMATCH", "缺少本轮文件传入原控件的证据")
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            frame = self._content_frame()
-            busy = any(self._visible_text(text) for text in ("上传中", "处理中", "转码中"))
-            publish = self._publish_button()
-            if publish.count() == 1 and self._button_ready(publish) and not busy:
+            if self._upload_ready():
                 return
-            frame.wait_for_timeout(2000)
+            self.page.wait_for_timeout(2000)
         raise PublishError("UPLOAD_TIMEOUT", "视频上传或平台处理未在限定时间内完成")
 
     def account_name(self):
@@ -275,7 +313,7 @@ class ChannelsPage:
         expected_video = (video.name, video.stat().st_size) if video.is_file() else None
         checks = {
             "video": expected_video is not None and self.uploaded_video == expected_video,
-            "upload_complete": self._button_ready(self._publish_button()),
+            "upload_complete": self._upload_ready(),
             "description": self._field_value(
                 '[contenteditable][data-placeholder="添加描述"]') == self.description_text(info),
             "short_title": self._field_value(

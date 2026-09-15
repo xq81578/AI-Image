@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -409,19 +411,141 @@ class PublishVideoTests(unittest.TestCase):
         expected = "AI 创作场景\n#旧时光"
         self.assertEqual(publisher.ChannelsPage.description_text(self.progress["info"]), expected)
 
-    def test_upload_rejects_browser_file_mismatch(self):
+    def upload_fixture(self, selected):
+        channels = publisher.ChannelsPage(Mock())
         inputs = Mock()
         inputs.count.return_value = 1
-        inputs.evaluate.return_value = {"name": "other.mp4", "size": 5}
-        frame = Mock()
-        frame.url = "https://channels.weixin.qq.com/micro/content/post/create"
-        frame.locator.return_value = inputs
-        page = Mock()
-        page.frames = [frame]
-        channels = publisher.ChannelsPage(page)
-        with self.assertRaisesRegex(publisher.PublishError, "未保留本轮文件"):
+        original = inputs.element_handle.return_value
+        record = original.evaluate_handle.return_value
+        record.evaluate.side_effect = lambda script: selected if script == 'record => record.files' else None
+        channels._content_frame = Mock()
+        channels._content_frame.return_value.locator.return_value = inputs
+        return channels, inputs, original, record
+
+    def test_upload_captures_before_setting_original_and_disposes_handles(self):
+        channels, inputs, original, record = self.upload_fixture([{"name": "video.mp4", "size": 5}])
+        calls = Mock()
+        calls.attach_mock(original.evaluate_handle, 'capture')
+        calls.attach_mock(original.set_input_files, 'set_files')
+        calls.attach_mock(record.evaluate, 'read')
+        channels.upload(self.video)
+        self.assertEqual([call[0] for call in calls.mock_calls],
+                         ['capture', 'set_files', 'read', 'read', 'capture().dispose'])
+        original.set_input_files.assert_called_once_with(str(self.video))
+        inputs.set_input_files.assert_not_called()
+        inputs.evaluate.assert_not_called()
+        self.assertEqual(channels.uploaded_video, ('video.mp4', 5))
+        record.dispose.assert_called_once()
+        original.dispose.assert_called_once()
+
+    def test_upload_rejects_missing_wrong_or_multiple_files_and_clears_old_evidence(self):
+        for selected in (None, [], [{"name": "other.mp4", "size": 5}],
+                         [{"name": "video.mp4", "size": 6}],
+                         [{"name": "video.mp4", "size": 5}] * 2):
+            with self.subTest(selected=selected):
+                channels, inputs, original, record = self.upload_fixture(selected)
+                channels.uploaded_video = ('video.mp4', 5)
+                with self.assertRaisesRegex(publisher.PublishError, "未捕获"):
+                    channels.upload(self.video)
+                self.assertIsNone(channels.uploaded_video)
+                record.dispose.assert_called_once()
+                original.dispose.assert_called_once()
+
+    def test_set_files_failure_clears_evidence_and_removes_listener(self):
+        channels, inputs, original, record = self.upload_fixture(None)
+        channels.uploaded_video = ('video.mp4', 5)
+        original.set_input_files.side_effect = RuntimeError('detached')
+        with self.assertRaisesRegex(RuntimeError, 'detached'):
             channels.upload(self.video)
-        inputs.set_input_files.assert_called_once_with(str(self.video))
+        self.assertIsNone(channels.uploaded_video)
+        record.evaluate.assert_called_once_with('record => record.stop()')
+        record.dispose.assert_called_once()
+        original.dispose.assert_called_once()
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for the local event fixture')
+    def test_actual_capture_script_survives_clear_replace_and_shadow_change(self):
+        channels, inputs, original, record = self.upload_fixture([{"name": "video.mp4", "size": 5}])
+        channels.upload(self.video)
+        script = original.evaluate_handle.call_args.args[0]
+        # Execute production JS without a browser. This models capture propagation,
+        # including a non-composed shadow event, but is not a full DOM implementation.
+        fixture = r'''
+const assert = require('node:assert/strict');
+const install = eval('(' + JSON.parse(require('node:fs').readFileSync(0, 'utf8')) + ')');
+class Scope {
+    listeners = [];
+    addEventListener(type, listener, capture) {
+        assert.equal(type, 'change'); assert.equal(capture, true);
+        this.listeners.push(listener);
+    }
+    removeEventListener(type, listener, capture) {
+        this.listeners = this.listeners.filter(item => item !== listener);
+    }
+    dispatch(event) { for (const listener of [...this.listeners]) listener(event); }
+}
+for (const composed of [true, false]) {
+    for (const replace of [true, false]) {
+        const view = new Scope(), root = new Scope();
+        const input = {ownerDocument: {defaultView: view}, getRootNode: () => root,
+                       files: [{name: 'old.mp4', size: 3}]};
+        const record = install(input);
+        assert.equal(record.files, null); // retained old files are not evidence
+        const other = {files: [{name: 'video.mp4', size: 5}]};
+        const unrelated = {composedPath: () => [other, root, view]};
+        view.dispatch(unrelated); root.dispatch(unrelated);
+        assert.equal(record.files, null);
+        input.files = [{name: 'video.mp4', size: 5}];
+        const event = {composedPath: () => [input, root, ...(composed ? [view] : [])]};
+        if (composed) view.dispatch(event);
+        root.dispatch(event);
+        // Site's target listener consumes the file and clears/replaces the input.
+        input.files = [];
+        const current = replace ? other : input;
+        assert.notEqual(current.files, record.files);
+        root.dispatch(event); // a later clearing event must not erase evidence
+        assert.deepEqual(record.files, [{name: 'video.mp4', size: 5}]);
+        record.stop();
+        assert.equal(view.listeners.length + root.listeners.length, 0);
+    }
+}
+'''
+        completed = subprocess.run([shutil.which('node'), '-e', fixture], input=json.dumps(script),
+                                   text=True, capture_output=True, timeout=15)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_readiness_requires_current_upload_and_no_processing(self):
+        channels = publisher.ChannelsPage(Mock())
+        button = Mock()
+        button.count.return_value = 1
+        button.get_attribute.return_value = ''
+        channels._publish_button = Mock(return_value=button)
+        channels._visible_text = Mock(return_value=False)
+        self.assertFalse(channels._upload_ready())
+        with self.assertRaisesRegex(publisher.PublishError, '缺少本轮'):
+            channels.wait_until_ready()
+        channels.uploaded_video = ('video.mp4', 5)
+        self.assertTrue(channels._upload_ready())
+        for busy in ('上传中', '处理中', '转码中'):
+            channels._visible_text.side_effect = lambda text: text == busy
+            self.assertFalse(channels._upload_ready())
+        channels._visible_text.side_effect = None
+        button.count.return_value = 2
+        self.assertFalse(channels._upload_ready())
+
+    def test_form_checks_rejects_processing_even_with_enabled_button(self):
+        channels = publisher.ChannelsPage(Mock())
+        channels.uploaded_video = ('video.mp4', 5)
+        channels._visible_text = Mock(return_value=True)
+        channels._publish_button = Mock()
+        channels._publish_button.return_value.count.return_value = 1
+        channels._publish_button.return_value.get_attribute.return_value = ''
+        channels._field_value = Mock(side_effect=[channels.description_text(self.progress['info']),
+                                                self.progress['info']['short_title']])
+        channels._row_has_value = Mock(return_value=True)
+        channels._checked_choice = Mock(return_value=True)
+        channels._original_checked = Mock(return_value=True)
+        with self.assertRaisesRegex(publisher.PublishError, 'upload_complete'):
+            channels.form_checks(self.progress['info'])
 
     def test_css_disabled_publish_button_is_not_ready(self):
         button = Mock()
