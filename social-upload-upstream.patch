@@ -1,25 +1,47 @@
 diff --git a/uploader/tencent_uploader/main.py b/uploader/tencent_uploader/main.py
-index de1fc96..4b3658d 100644
+index de1fc96..78645b1 100644
 --- a/uploader/tencent_uploader/main.py
 +++ b/uploader/tencent_uploader/main.py
-@@ -117,7 +117,6 @@ async def cookie_auth(account_file):
+@@ -8,10 +8,12 @@ import os
+ import time
+ from datetime import datetime
+ from pathlib import Path
++import sys
+ from urllib.parse import urljoin
+
+ from patchright.async_api import Page
+ from patchright.async_api import Playwright
++from patchright.async_api import TimeoutError as PlaywrightTimeoutError
+ from patchright.async_api import async_playwright
+
+ from conf import BASE_DIR, DEBUG_MODE, LOCAL_CHROME_HEADLESS, LOCAL_CHROME_PATH
+@@ -117,7 +119,6 @@ async def cookie_auth(account_file):
          browser = await playwright.chromium.launch(**_build_launch_kwargs(headless=True))
          try:
              context = await browser.new_context(storage_state=account_file)
 -            context = await set_init_script(context)
              page = await context.new_page()
              await page.goto(TENCENT_UPLOAD_URL, wait_until="domcontentloaded")
- 
-@@ -216,7 +215,7 @@ async def _save_tencent_qrcode(page: Page, account_file: str, previous_qrcode_pa
+
+@@ -127,7 +128,7 @@ async def cookie_auth(account_file):
+                 await page.wait_for_url("**/login.html**", timeout=8000)
+                 tencent_logger.info(_msg("🥹", "cookie 已失效（页面跳转到登录页），得重新登录一下"))
+                 return False
+-            except Exception:
++            except PlaywrightTimeoutError:
+                 pass  # 8 秒内未跳转, 大概率已登录
+
+             # 双保险: 页面里出现微信扫码登录 iframe 也视为失效
+@@ -216,7 +217,7 @@ async def _save_tencent_qrcode(page: Page, account_file: str, previous_qrcode_pa
              tencent_logger.info(_msg("🧹", f"临时二维码文件已清理: {previous_qrcode_path}"))
- 
+
      tencent_logger.info(_msg("🖼️", f"二维码已经准备好啦，已保存到: {qrcode_path}"))
 -    qrcode_content = qrcode_utils["decode_qrcode_from_path"](qrcode_path)
 +    qrcode_content = None if qrcode_callback else qrcode_utils["decode_qrcode_from_path"](qrcode_path)
      if qrcode_content:
          qrcode_utils["print_terminal_qrcode"](qrcode_content, qrcode_path, "微信")
      else:
-@@ -352,7 +351,7 @@ async def _wait_for_tencent_login(
+@@ -352,7 +353,7 @@ async def _wait_for_tencent_login(
  ) -> dict:
      qrcode_path = Path(qrcode_info["image_path"]) if qrcode_info else None
      scanned_logged = False
@@ -28,19 +50,16 @@ index de1fc96..4b3658d 100644
          if await _is_tencent_login_completed(page):
              tencent_logger.info(_msg("🥳", f"扫码成功，已经跳转到登录后页面: {page.url}"))
              return _build_login_result(True, "success", "视频号扫码登录成功", account_file, qrcode_info, page.url)
-@@ -361,9 +360,9 @@ async def _wait_for_tencent_login(
-             tencent_logger.info(_msg("📱", "已经扫码啦，还差手机端确认一下"))
-             scanned_logged = True
- 
--        if await _is_tencent_qrcode_expired(page):
-+        if await _is_tencent_qrcode_expired(page) or (check_index and check_index % 20 == 0):
+@@ -363,7 +364,7 @@ async def _wait_for_tencent_login(
+
+         if await _is_tencent_qrcode_expired(page):
              tencent_logger.warning(_msg("😵", "二维码失效了，小人马上去刷新"))
 -            await _refresh_tencent_qrcode(page)
 +            await page.reload(wait_until="domcontentloaded")
              await asyncio.sleep(1)
              try:
                  qrcode_info = await _save_tencent_qrcode(
-@@ -373,8 +372,10 @@ async def _wait_for_tencent_login(
+@@ -373,8 +374,10 @@ async def _wait_for_tencent_login(
                      qrcode_callback=qrcode_callback,
                  )
                  qrcode_path = Path(qrcode_info["image_path"])
@@ -50,10 +69,10 @@ index de1fc96..4b3658d 100644
 +                if qrcode_callback:
 +                    raise
 +                raise
- 
+
          await asyncio.sleep(poll_interval)
- 
-@@ -403,6 +404,8 @@ async def tencent_cookie_gen(
+
+@@ -403,6 +406,8 @@ async def tencent_cookie_gen(
                  qrcode_info = await _save_tencent_qrcode(page, account_file, qrcode_callback=qrcode_callback)
                  qrcode_path = Path(qrcode_info["image_path"])
              except Exception as exc:
@@ -62,9 +81,9 @@ index de1fc96..4b3658d 100644
                  tencent_logger.warning(
                      _msg("⚠️", f"提取二维码图片失败({exc})，请直接在弹出的浏览器窗口中扫码，登录流程不受影响")
                  )
-@@ -880,61 +883,31 @@ class TencentBaseUploader(BaseVideoUploader):
+@@ -880,61 +885,31 @@ class TencentBaseUploader(BaseVideoUploader):
                  await asyncio.sleep(2)
- 
+
      async def submit_publish(self, page: Page) -> None:
 -        is_draft = getattr(self, "is_draft", False)
 -        # 先等待并清理遮罩/弹窗,再等发表按钮出现
@@ -145,8 +164,8 @@ index de1fc96..4b3658d 100644
 -        raise RuntimeError("发布未在预期时间内完成，请检查发布页面")
 +            await asyncio.sleep(1)
 +        raise RuntimeError("UNCERTAIN_SUBMISSION: no explicit platform receipt")
- 
- 
+
+
  class TencentVideo(TencentBaseUploader):
 diff --git a/utils/login_qrcode.py b/utils/login_qrcode.py
 index 04be939..406e3cf 100644
@@ -155,16 +174,16 @@ index 04be939..406e3cf 100644
 @@ -4,9 +4,6 @@ import base64
  from pathlib import Path
  import sys
- 
+
 -import cv2
 -import numpy as np
 -import segno
- 
- 
+
+
  def build_login_qrcode_path(account_file: str, suffix: str = "login_qrcode") -> Path:
 @@ -36,6 +33,8 @@ def remove_qrcode_file(qrcode_path: Path | None) -> bool:
- 
- 
+
+
  def decode_qrcode_from_path(qrcode_path: Path) -> str | None:
 +    import cv2
 +    import numpy as np

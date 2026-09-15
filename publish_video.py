@@ -633,10 +633,17 @@ def notify_qr(state, channels, progress):
     text_file = folder / f"telegram-login-{sequence}.txt"
     text_file.write_text(f"时光对照视频 {state.run_id} 需要登录视频号。请用微信扫描附件二维码，并在手机上确认登录。\n", encoding="utf-8")
     state.verify_ownership()
-    result = subprocess.run([str(PYTHON), str(NOTIFIER), "send", "--event", event,
-                             "--text-file", str(text_file), "--kind", "document", "--file", str(image)],
-                            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                            timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    try:
+        result = subprocess.run([str(PYTHON), str(NOTIFIER), "send", "--event", event,
+                                 "--text-file", str(text_file), "--kind", "document", "--file", str(image)],
+                                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except subprocess.TimeoutExpired as exc:
+        process = getattr(exc, "process", None)
+        if process is not None:
+            process.kill()
+            process.wait()
+        raise PublishError("TELEGRAM_FAILED", "Telegram 通知超时，已终止通知进程") from exc
     if result.returncode:
         try:
             message = json.loads(result.stderr)["message"]
