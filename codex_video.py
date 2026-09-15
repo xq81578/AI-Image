@@ -29,6 +29,8 @@ DEFAULTS = {"counts": [5, 6], "max_image_calls": 36, "attempts_per_image": 3,
             "output_dir": "outputs/codex-time-echo"}
 PUBLISH_CHECKS = ("video", "upload_complete", "description", "short_title", "location",
                   "collection", "link", "activity", "schedule", "original", "ai_label")
+SHORT_TITLE_MIN = 7
+SHORT_TITLE_MAX = 15
 PUBLISH_TRANSITIONS = {
     "awaiting_publish": {"blocked"},
     "prepared": {"waiting_login", "uploading", "blocked"},
@@ -41,6 +43,21 @@ PUBLISH_TRANSITIONS = {
     "published": {"delivered"},
     "delivered": set(),
 }
+
+
+def validate_publish_copy(short_title, description):
+    """发布文案只保留一句话；短标题是该句去掉全部符号后的版本。"""
+    if not isinstance(short_title, str) or short_title != short_title.strip():
+        raise ValueError("短标题前后不能有空格")
+    if not SHORT_TITLE_MIN <= len(short_title) <= SHORT_TITLE_MAX:
+        raise ValueError(f"短标题须为 {SHORT_TITLE_MIN}~{SHORT_TITLE_MAX} 个汉字、字母或数字")
+    if not all(char.isalnum() for char in short_title):
+        raise ValueError("短标题不能包含空格或任何标点符号")
+    if not isinstance(description, str) or not description.strip():
+        raise ValueError("视频描述不能为空")
+    description_title = "".join(char for char in description.strip() if char.isalnum())
+    if description_title != short_title:
+        raise ValueError("视频描述须为短标题对应的同一句话，可带标点；话题请单独填写")
 
 
 class ExecutionBusy(ValueError):
@@ -483,6 +500,7 @@ class Workspace:
         for key in ("short_title", "description"):
             if not isinstance(info.get(key), str) or not info[key].strip():
                 raise ValueError(f"发布资料缺少 {key}")
+        validate_publish_copy(info["short_title"], info["description"])
         if not isinstance(info.get("hashtags"), list) or not all(isinstance(t, str) for t in info["hashtags"]):
             raise ValueError("hashtags 必须是字符串数组")
         expected = {"location": "不显示位置", "collection": "旧时光", "link": None,

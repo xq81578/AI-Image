@@ -11,7 +11,7 @@ import subprocess
 import sys
 import types
 
-from codex_video import ROOT, Workspace, PUBLISH_CHECKS, digest
+from codex_video import ROOT, Workspace, PUBLISH_CHECKS, digest, validate_publish_copy
 from publish_video import (PublicationState, PublishError, resolve_owner, notify_qr,
                            cleanup_login_files, terminal_publication_result)
 
@@ -102,6 +102,34 @@ class StrictForm:
     async def text(self, selector):
         return (await (await self.unique(selector)).inner_text()).strip()
 
+    @staticmethod
+    async def visible(locator):
+        for index in range(await locator.count()):
+            if await locator.nth(index).is_visible():
+                return True
+        return False
+
+    @staticmethod
+    async def button_ready(button):
+        if await button.count() != 1 or not await button.is_visible() or not await button.is_enabled():
+            return False
+        classes = await button.get_attribute("class")
+        return not classes or "weui-desktop-btn_disabled" not in classes
+
+    async def wait_button_ready(self, button, timeout=5000):
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while not await self.button_ready(button):
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_VALUE_MISMATCH", "声明原创确认按钮未启用")
+            await self.page.wait_for_timeout(100)
+
+    async def wait_hidden(self, locator, timeout=5000):
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while await locator.count() and await locator.is_visible():
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_VALUE_MISMATCH", "声明原创二次确认窗口未关闭")
+            await self.page.wait_for_timeout(100)
+
     async def select(self, display, trigger, options, value):
         if await self.text(display) != value:
             await (await self.unique(trigger)).click()
@@ -118,6 +146,10 @@ class StrictForm:
 
     async def verify(self, info):
         s = info["settings"]
+        try:
+            validate_publish_copy(info["short_title"], info["description"])
+        except ValueError as exc:
+            raise PublishError("INVALID_PUBLISH_COPY", str(exc)) from exc
         description = info["description"].strip() + ("\n" + " ".join("#" + t.lstrip("#") for t in info["hashtags"]) if info["hashtags"] else "")
         desc = await self.unique('[contenteditable][data-placeholder="添加描述"]')
         await desc.fill(description)
@@ -141,10 +173,24 @@ class StrictForm:
         if await original.count() != 1 or not s["original_requested"]:
             raise PublishError("FORM_CONTROL_NOT_FOUND", "原创声明")
         await original.check()
-        dialog = self.page.locator('.declare-original-dialog .weui-desktop-dialog__wrp')
-        if await dialog.count() == 1 and await dialog.is_visible():
-            await dialog.locator('input[type="checkbox"]').check()
-            await dialog.get_by_role("button", name="声明原创", exact=True).click()
+        dialog = await self.unique('.declare-original-dialog .weui-desktop-dialog__wrp', timeout=5000)
+        agreement = dialog.locator('input[type="checkbox"]')
+        if await agreement.count() != 1:
+            raise PublishError("FORM_CONTROL_NOT_FOUND", "原创声明同意复选框")
+        await agreement.check()
+        if not await agreement.is_checked():
+            raise PublishError("FORM_VALUE_MISMATCH", "原创声明协议未勾选")
+        confirm = dialog.get_by_role("button", name="声明原创", exact=True)
+        await self.wait_button_ready(confirm)
+        await confirm.click()
+        await self.wait_hidden(dialog)
+        await self.page.wait_for_timeout(300)
+        title_error = self.page.get_by_text("标题包含特殊字符", exact=False)
+        if await self.visible(title_error):
+            raise PublishError("TITLE_VALIDATION_FAILED", "页面提示标题包含特殊字符")
+        publish_button = self.page.get_by_role("button", name="发表", exact=True)
+        if not await self.button_ready(publish_button):
+            raise PublishError("FORM_NOT_READY", "发表按钮仍处于禁用状态")
         checks = {"description": (await desc.inner_text()).strip() == description,
                   "short_title": await title.input_value() == info["short_title"],
                   "schedule": await radio.is_checked(), "original": await original.is_checked()}

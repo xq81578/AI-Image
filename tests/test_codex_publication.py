@@ -26,8 +26,8 @@ class PublicationTests(unittest.TestCase):
         review = {"framing": True, "years": True, "order": True, "transitions": True, "observations": "测试成片审核"}
         with patch("codex_video.validate_video", return_value={}):
             self.call("finish", review)
-        self.info = {"run_id": self.run_id, "video": str(self.video), "short_title": "旧日难回",
-                     "description": "AI 创作场景", "hashtags": ["旧时光"],
+        self.info = {"run_id": self.run_id, "video": str(self.video), "short_title": "旧日地方难再回",
+                     "description": "旧日地方，难再回。", "hashtags": ["旧时光"],
                      "settings": {"location": "不显示位置", "collection": "旧时光", "link": None,
                                   "activity": "不参与活动", "schedule": "不定时", "original_requested": True,
                                   "ai_label": "内容为虚构剧情，仅供娱乐"}}
@@ -61,6 +61,17 @@ class PublicationTests(unittest.TestCase):
                            ("settings", {}), ("short_title", "")):
             info = {**self.info, key: value}
             with self.subTest(key=key), self.assertRaises(ValueError):
+                self.call("publish-init", info)
+        self.assertEqual(self.call("publish-status")["status"], "awaiting_publish")
+
+    def test_prepare_rejects_symbolic_title_or_mechanical_description(self):
+        invalid = (
+            {**self.info, "short_title": "旧日地方，难再回"},
+            {**self.info, "short_title": "旧日 地方难再回"},
+            {**self.info, "description": "这是很长而且机械的额外视频介绍。"},
+        )
+        for info in invalid:
+            with self.subTest(info=info), self.assertRaises(ValueError):
                 self.call("publish-init", info)
         self.assertEqual(self.call("publish-status")["status"], "awaiting_publish")
 
@@ -162,10 +173,10 @@ class PublicationTests(unittest.TestCase):
 
     def test_title_can_be_shortened_before_submission_and_rechecked(self):
         self.ready()
-        amended = {**self.info, "short_title": "旧日"}
+        amended = {**self.info, "short_title": "旧日街巷难再回", "description": "旧日街巷，难再回。"}
         result = self.call("publish-init", amended)
         self.assertEqual(result["status"], "prepared")
-        self.assertEqual(result["info"]["short_title"], "旧日")
+        self.assertEqual(result["info"]["short_title"], "旧日街巷难再回")
         with self.assertRaises(ValueError):
             self.step("submitting")
 

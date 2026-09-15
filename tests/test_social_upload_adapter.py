@@ -193,5 +193,13 @@ class SocialTests(unittest.TestCase):
         self.assertIn('.not-display', StrictForm.LOCATION_VALUE)
         self.assertIn('.collection-text', StrictForm.COLLECTION_VALUE)
 
+    def test_css_disabled_button_is_not_ready(self):
+        class Button:
+            async def count(self): return 1
+            async def is_visible(self): return True
+            async def is_enabled(self): return True
+            async def get_attribute(self, name): return 'weui-desktop-btn weui-desktop-btn_disabled'
+        self.assertFalse(asyncio.run(StrictForm.button_ready(Button())))
+
 
 if __name__ == '__main__': unittest.main()

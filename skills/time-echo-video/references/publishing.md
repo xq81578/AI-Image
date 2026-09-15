@@ -24,14 +24,14 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 
 ## 准备发布资料
 
-在本批次目录准备 `publish-info.json` 和便于复制的 `发布文案.txt`，根据实际选题写短标题、描述和话题，描述标明 AI 创作场景。不要把生成场景写成真实历史纪实、实地拍摄或真人经历。示例结构：
+在本批次目录准备 `publish-info.json` 和便于复制的 `发布文案.txt`。先根据本轮画面写一句简短、自然、有情绪的发布句，不写机械的内容说明。`description` 使用这句原文，可带逗号、句号等标点；`short_title` 使用同一句话去掉全部标点和空格后的版本，只能含 7~15 个汉字、字母或数字；话题只放在 `hashtags`，由发布器追加到视频描述。平台“视频标注”会声明虚构内容，不再把“AI 创作场景”等说明塞进描述。不要把生成场景写成真实历史纪实、实地拍摄或真人经历。示例结构：
 
 ```json
 {
   "run_id": "本轮批次",
   "video": "本批次实际成片绝对路径",
-  "short_title": "地方还在，旧日难回",
-  "description": "根据本轮内容创作的描述，标明 AI 创作场景",
+  "short_title": "地方还在旧日难回",
+  "description": "地方还在，旧日难回。",
   "hashtags": ["旧时光", "物是人非", "怀旧", "时光对照"],
   "settings": {
     "location": "不显示位置",
@@ -52,7 +52,7 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 1. 按项目 `social-upload-install.md` 安装固定 SHA、补丁与独立 `.venv-social`。运行 `.venv-social/Scripts/python.exe social_upload_adapter.py --smoke` 只验证版本、补丁及真实腾讯模块导入，不联网、不启动浏览器、不发送通知。
 2. 运行 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`。真实 TencentVideo/tencent_setup 使用 Edge 和工作区共享 `.social-upload-account/social-account.json` 保存登录态；该文件是敏感会话数据，不放入进度事件或提交 Git。
 3. 登录图片来自上游 qrcode_callback 的实际图片路径，经图片格式校验后以 Telegram document 子进程发送。持久 SHA256、事件键、sent/already_sent 回执用于同码去重；约每 60 秒刷新新码。默认上游最多检查 100 次（约 300 秒），外层 --login-timeout 默认 900 秒为总上限。每次回调及退出均清理二维码文件。
-4. 上游负责真实上传；适配器在上游提交钩子内填写并验证描述、话题、原始短标题、位置、合集、无链接、活动、定时、原创和视频标注。控件缺失或值不符直接阻塞，不跳过固定设置。
+4. 上游负责真实上传；适配器在上游提交钩子内填写并验证简短描述、话题、无符号短标题、位置、合集、无链接、活动、定时、原创和视频标注。原创声明必须完成二次确认：勾选协议、等待确认按钮启用、点击“声明原创”并确认弹窗关闭。适配器还要确认页面没有标题错误且“发表”按钮未处于禁用状态；任一条件不成立都在提交前阻塞。
 5. 状态机先持久保存 ready 和 submitting，然后只授权一次 click。上游补丁禁止发表重试与 JavaScript 补点；必须看到明确平台成功提示才登记 published。退出码 0、按钮消失或跳页均不是成功证据。submitting/uncertain 再次执行只返回 UNCERTAIN_SUBMISSION，不打开上传流程。
 6. --dry-run 会真实上传填表，停在 ready；不是离线测试。离线测试使用 `python -m unittest discover -s tests -p 'test_*.py'`。发布后的 Telegram 结果通知仍按下节执行。
 
