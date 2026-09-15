@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 from PIL import Image
 import test_codex_publication as fixtures
+import social_upload_adapter as adapter
 from social_upload_adapter import load_tencent, publish, QRCallback, StrictForm, account_path
 from publish_video import PublicationState, PublishError
 
@@ -168,6 +169,11 @@ class SocialTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'authorization'):
             asyncio.run(uploader.submit_publish(self.page))
         self.assertEqual(self.clicks, 0)
+
+    def test_load_rejects_wrong_patchright_version(self):
+        with patch.object(adapter, 'package_version', return_value='0.0.0'):
+            with self.assertRaisesRegex(RuntimeError, 'Patchright version mismatch'):
+                adapter.load_tencent()
 
 
 if __name__ == '__main__': unittest.main()

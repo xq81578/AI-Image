@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+from importlib.metadata import PackageNotFoundError, version as package_version
 import json
 import os
 from pathlib import Path
@@ -15,10 +16,19 @@ from publish_video import (PublicationState, PublishError, resolve_owner, notify
                            cleanup_login_files, terminal_publication_result)
 
 UPSTREAM_SHA = "0012d2c355f88f683cc38dde2a2db209e14091bc"
+PATCHRIGHT_VERSION = "1.62.3"
 UPSTREAM = ROOT / "social-auto-upload"
 
 
 def load_tencent():
+    try:
+        installed_patchright = package_version("patchright")
+    except PackageNotFoundError as exc:
+        raise RuntimeError("Patchright is not installed in .venv-social") from exc
+    if installed_patchright != PATCHRIGHT_VERSION:
+        raise RuntimeError(
+            f"Patchright version mismatch: expected {PATCHRIGHT_VERSION}, got {installed_patchright}"
+        )
     sha = subprocess.check_output(["git", "-C", str(UPSTREAM), "rev-parse", "HEAD"], text=True).strip()
     if sha != UPSTREAM_SHA:
         raise RuntimeError("social-auto-upload SHA mismatch; reinstall pinned revision")
@@ -239,7 +249,11 @@ def main():
     args = parser.parse_args()
     if args.smoke:
         load_tencent()
-        result = {"status": "OK", "upstream_sha": UPSTREAM_SHA}
+        result = {
+            "status": "OK",
+            "upstream_sha": UPSTREAM_SHA,
+            "patchright_version": PATCHRIGHT_VERSION,
+        }
     else:
         if not args.run or not args.token:
             parser.error("需要 --run 和 --token")

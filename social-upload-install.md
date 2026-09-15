@@ -17,7 +17,7 @@ C:/Python313/python.exe -m venv .venv-social
 .venv-social/Scripts/python.exe -m unittest discover -s tests -p 'test_*.py'
 ```
 
-适配器核验 SHA 和补丁文件的 SHA256；哈希按 LF 规范化，以兼容 Git 的 Windows 换行设置。固定浏览器路径为 `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`，不存在则明确失败。直接调用 `TencentVideo`、`tencent_setup`，不需要上游 conf.py；仅在当前 Python 进程提供腾讯所需配置。没有下载其他浏览器、启动后台服务或安装定时任务。
+适配器核验 SHA、补丁文件的 SHA256 和 `patchright==1.62.3`；哈希按 LF 规范化，以兼容 Git 的 Windows 换行设置。固定浏览器路径为 `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`，不存在则明确失败。直接调用 `TencentVideo`、`tencent_setup`，不需要上游 conf.py；仅在当前 Python 进程提供腾讯所需配置。没有下载其他浏览器、启动后台服务或安装定时任务。
 
 正式入口为 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`；非 Codex 环境还需 `--owner <真实任务ID>`。`--smoke` 无浏览器、无网络、无发送。`--dry-run` 会真实上传填表但不发表，不可当作离线验证。原 `publish_video.py` 保留状态机与二维码通知公共函数，新的入口不调用其 ChannelsPage 或旧发布执行流程。
 
