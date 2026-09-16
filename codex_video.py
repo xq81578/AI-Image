@@ -21,9 +21,11 @@ from video_service import AUDIO_EXTENSIONS, build_ffmpeg_command
 
 
 ROOT = Path(__file__).resolve().parent
-CHECKS = {"old": ["realism", "era", "anatomy", "composition", "no_text"],
+CHECKS = {"old": ["realism", "era", "anatomy", "composition", "no_text",
+                  "rural", "lived_in"],
           "now": ["realism", "era", "anatomy", "composition", "no_text",
-                  "same_place", "time_change", "loss"]}
+                  "rural", "same_place", "time_change", "loss", "abandonment",
+                  "object_change", "viewpoint", "season_match"]}
 DEFAULTS = {"counts": [5, 6], "max_image_calls": 36, "attempts_per_image": 3,
             "candidates_per_pair": 3, "keep_images": False,
             "output_dir": "outputs/codex-time-echo"}
@@ -329,6 +331,13 @@ class Workspace:
         for key, minimum in (("anchors", 2), ("changes", 3)):
             if not isinstance(plan.get(key), list) or len(plan[key]) < minimum or not all(isinstance(v, str) and v.strip() for v in plan[key]):
                 raise ValueError(f"选题 {key} 至少需要 {minimum} 项")
+        if "old_year" in plan:
+            old_year = plan["old_year"]
+            if not isinstance(old_year, int) or isinstance(old_year, bool):
+                raise ValueError("选题 old_year 必须是整数年份")
+            if not 1980 <= old_year <= pair["new_year"] - 10:
+                raise ValueError("选题 old_year 须在 1980 年至新年份前至少十年")
+            pair["old_year"] = old_year
         pair["plan"] = plan
         self.save(folder, data)
         return pair

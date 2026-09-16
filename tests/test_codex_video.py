@@ -57,6 +57,20 @@ class CodexVideoTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "上限"):
             self.work.attempt(self.folder, self.data, 1, "old", "retry")
 
+    def test_plan_can_choose_scene_appropriate_old_year(self):
+        pair = self.data["pairs"][1]
+        plan = dict(self.plan, old_year=1993)
+        self.work.plan(self.folder, self.data, 2, plan)
+        self.assertEqual(pair["old_year"], 1993)
+
+        compatible_year = self.data["pairs"][2]["old_year"]
+        self.work.plan(self.folder, self.data, 3, self.plan)
+        self.assertEqual(self.data["pairs"][2]["old_year"], compatible_year)
+
+        invalid = dict(self.plan, old_year=1979)
+        with self.assertRaisesRegex(ValueError, "1980"):
+            self.work.plan(self.folder, self.data, 4, invalid)
+
     def test_requires_old_acceptance_and_serial_requests(self):
         with self.assertRaisesRegex(ValueError, "旧照"):
             self.work.attempt(self.folder, self.data, 1, "now", "now")

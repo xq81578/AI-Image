@@ -23,31 +23,34 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 
 `attempt` 在调用前计数并返回 id；失败也消耗一次，避免中断后无限调用。每次最多一个 pending，请求返回后及时登记。`record` 自动复制、标准化成 PNG 并保存哈希；后续审核通过的文件若被修改会拒绝合成。失败图保留到出片清理。
 
-选题 JSON：
+选题 JSON（以下只演示字段结构，不作为固定选题模板）：
 
 ```json
 {
-  "title": "末班车再也不从这里开了",
-  "old_life": "母亲和孩子拎着编织袋在候车廊等车回家",
-  "loss": "过去可以等车回家的地方，已经不再发车",
-  "change_route": "停运后改成储物间",
-  "caption": "以前嫌车来得慢。\n后来，这里再也没有车来了。",
-  "anchors": ["廊柱与低平雨棚轮廓", "右侧台阶位置"],
-  "changes": ["线路牌拆走留色差", "窗口换成封闭百叶板", "长凳拆走留下修补痕"]
+  "old_year": 2004,
+  "title": "本组标题",
+  "old_life": "旧照中仍在运行的具体乡土生活或使用状态",
+  "loss": "多年后消失的生活、关系或功能",
+  "change_route": "同一地点自然荒废或明显空心化的现实路径",
+  "caption": "根据本组实际画面写的两行文案",
+  "anchors": ["地点连续线索一", "地点连续线索二"],
+  "changes": ["跨类别变化一", "跨类别变化二", "跨类别变化三"]
 }
 ```
+
+`old_year` 由选题决定，必须与本批 `new_year` 至少相隔十年。默认使用 2000 年以后；仅在年代质感与地点连续性可靠时使用 1980、1990 年代。旧批次或旧调用未提供 `old_year` 时保留 `begin` 创建的兼容年份。
 
 旧照审核 JSON（以下只是结构示例，不得未经看图直接套用通过）：
 
 ```json
 {
   "passed": true,
-  "checks": {"realism": true, "era": true, "anatomy": true, "composition": true, "no_text": true},
+  "checks": {"realism": true, "era": true, "anatomy": true, "composition": true, "no_text": true, "rural": true, "lived_in": true},
   "observations": "写当前图片实际可见的人物、相纸、场景结构与画质情况"
 }
 ```
 
-今照在 checks 中增加 `same_place`、`time_change`、`loss` 布尔项，并增加 `visible_changes` 字符串数组（至少三项）及 `loss_evidence` 字符串。不通过项填 false，passed=false，写清返工原因。
+今照在 checks 中使用 `rural`、`same_place`、`time_change`、`loss`、`abandonment`、`object_change`、`viewpoint`、`season_match`，不使用 `lived_in`；并增加 `visible_changes` 字符串数组（至少三项）及 `loss_evidence` 字符串。不通过项填 false，passed=false，写清返工原因。
 
 成片审核 JSON：
 
