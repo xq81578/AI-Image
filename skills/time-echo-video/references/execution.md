@@ -31,14 +31,19 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
   "title": "本组标题",
   "old_life": "旧照中仍在运行的具体乡土生活或使用状态",
   "loss": "多年后消失的生活、关系或功能",
-  "change_route": "同一地点自然荒废或明显空心化的现实路径",
+  "change_route": "同一地点原功能退出、闲置、改作、荒废或明显空心化的现实路径",
   "caption": "根据本组实际画面写的两行文案",
   "anchors": ["地点连续线索一", "地点连续线索二"],
-  "changes": ["跨类别变化一", "跨类别变化二", "跨类别变化三"]
+  "changes": [
+    "[功能] 旧照中的具体活动如何终止、迁移或改作，并留下可见证据",
+    "[结构/维护] 建筑材料、门窗、屋面、铺装或维护状态的持久变化",
+    "[环境/设施/用途] 环境、基础设施、管理方式或空间用途的变化"
+  ]
 }
 ```
 
 `old_year` 由选题决定，必须与本批 `new_year` 至少相隔十年。默认使用 2000 年以后；仅在年代质感与地点连续性可靠时使用 1980、1990 年代。旧批次或旧调用未提供 `old_year` 时保留 `begin` 创建的兼容年份。
+`changes` 虽然沿用字符串数组以兼容现有批次，但语义上必须覆盖上述三类，且至少两项是当天搬空人物和器物无法造成的持久痕迹。多人、桌椅、工具同时消失只能合并算一项 `[功能]` 变化；灰尘、调色、单独加草或单独加裂缝不能独立计数。`change_route` 写清导致变化的现实路径；若新桥、搬迁、设施替代或改作等原因无法在今照中直接看见，也看不见其结果，就不能依赖文案补足。
 
 旧照审核 JSON（以下只是结构示例，不得未经看图直接套用通过）：
 
@@ -50,7 +55,7 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 }
 ```
 
-今照在 checks 中使用 `rural`、`same_place`、`time_change`、`loss`、`abandonment`、`object_change`、`viewpoint`、`season_match`，不使用 `lived_in`；并增加 `visible_changes` 字符串数组（至少三项）及 `loss_evidence` 字符串。不通过项填 false，passed=false，写清返工原因。
+今照在 checks 中使用 `rural`、`same_place`、`time_change`、`loss`、`abandonment`、`object_change`、`viewpoint`、`season_match`，不使用 `lived_in`；并增加 `visible_changes` 字符串数组及 `loss_evidence` 字符串。`visible_changes` 至少各有一项 `[功能]`、`[结构/维护]`、`[环境/设施/用途]`，用“旧照实际可见状态 → 今照实际可见状态”描述，并至少包含两项当天清场无法造成的持久变化。`loss_evidence` 同时说明失去的具体活动或关系，以及证明它已长期退出的画面痕迹。计划中有而实际图片没有、看不清、只靠文案成立或与年份不匹配的内容不能作为证据。不通过项填 false，passed=false，写清返工原因；本地脚本只验证字段结构，语义真实性必须由 Codex 看图判断。
 
 成片审核 JSON：
 
