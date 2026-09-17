@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, patch
 from PIL import Image
 import test_codex_publication as fixtures
 import social_upload_adapter as adapter
-from social_upload_adapter import load_tencent, publish, QRCallback, StrictForm, account_path
+from social_upload_adapter import (load_tencent, publish, QRCallback, StrictForm,
+                                   PersistentTencentSession, account_path)
 from publish_video import PublicationState, PublishError
 
 
@@ -25,6 +26,10 @@ class SocialTests(unittest.TestCase):
         self.clicks = 0
         self.success = True
         self.click_error = False
+        self.login_result = {"success": True}
+        self.reconcile_result = None
+        self.upload_override = None
+        self.session = None
         test = self
         class Locator:
             async def count(self): return 1
@@ -46,16 +51,27 @@ class SocialTests(unittest.TestCase):
 
     def execute(self, noop=False):
         test = self
-        async def main(uploader):
-            if noop: return
-            await uploader.upload_video_file(test.page, uploader.file_path)
-            await uploader.wait_for_upload_complete(test.page)
-            await uploader.submit_publish(test.page)
-        with patch.object(self.module, "tencent_setup", AsyncMock(return_value={"success": True})), \
-             patch.object(self.module.TencentVideo, "main", main), \
-             patch.object(self.module.TencentVideo, "upload_video_file", AsyncMock()), \
+        class Session:
+            def __init__(self, module, state, args):
+                self.exited = False
+                self.saved = False
+                test.session = self
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): self.exited = True
+            async def login(self, account_file): return test.login_result
+            async def upload(self, uploader):
+                if test.upload_override:
+                    return await test.upload_override(uploader)
+                if noop:
+                    return
+                await uploader.upload_video_file(test.page, uploader.file_path)
+                await uploader.wait_for_upload_complete(test.page)
+                await uploader.submit_publish(test.page)
+            async def reconcile_submission(self, info): return test.reconcile_result
+            async def save_state(self, account_file): self.saved = True
+        with patch.object(self.module.TencentVideo, "upload_video_file", AsyncMock()), \
              patch.object(self.module.TencentVideo, "wait_for_upload_complete", AsyncMock()):
-            return asyncio.run(publish(self.args, self.state, self.module, self.form))
+            return asyncio.run(publish(self.args, self.state, self.module, self.form, Session))
 
     def test_success_durable_before_click_and_no_republish(self):
         self.args.result_timeout = 1
@@ -70,6 +86,15 @@ class SocialTests(unittest.TestCase):
         self.assertEqual(self.state.progress()["status"], "uncertain")
         self.assertEqual(self.execute()["status"], "UNCERTAIN_SUBMISSION")
         self.assertEqual(self.clicks, 1)
+
+    def test_uncertain_submission_is_reconciled_in_same_list_page(self):
+        self.reconcile_result = "作品列表匹配本轮文案，状态原创审核中"
+        result = self.execute()
+        self.assertEqual(result["status"], "PUBLISHED")
+        self.assertEqual(self.state.progress()["status"], "published")
+        self.assertEqual(self.clicks, 1)
+        self.assertTrue(self.session.saved)
+        self.assertTrue(self.session.exited)
 
     def test_click_timeout_never_falls_back_to_second_click(self):
         self.click_error = True
@@ -132,9 +157,9 @@ class SocialTests(unittest.TestCase):
         self.assertTrue(first.exists())
 
     def test_non_dict_login_result_is_explicit_failure(self):
-        with patch.object(self.module, 'tencent_setup', AsyncMock(return_value=False)):
-            with self.assertRaises(PublishError) as raised:
-                asyncio.run(publish(self.args, self.state, self.module, self.form))
+        self.login_result = False
+        with self.assertRaises(PublishError) as raised:
+            self.execute()
         self.assertEqual(raised.exception.code, 'LOGIN_FAILED')
         self.assertEqual(self.state.progress()['status'], 'blocked')
         self.assertEqual(self.clicks, 0)
@@ -155,12 +180,9 @@ class SocialTests(unittest.TestCase):
                 await uploader.submit_publish(test.page)
             except Exception:
                 pass
-        with patch.object(self.module, 'tencent_setup', AsyncMock(return_value={'success': True})), \
-             patch.object(self.module.TencentVideo, 'main', swallowed), \
-             patch.object(self.module.TencentVideo, 'upload_video_file', AsyncMock()), \
-             patch.object(self.module.TencentVideo, 'wait_for_upload_complete', AsyncMock()):
-            with self.assertRaises(PublishError):
-                asyncio.run(publish(self.args, self.state, self.module, self.form))
+        self.upload_override = swallowed
+        with self.assertRaises(PublishError):
+            self.execute()
         self.assertEqual(self.state.progress()['status'], 'uncertain')
         self.assertEqual(self.clicks, 1)
 
@@ -200,6 +222,16 @@ class SocialTests(unittest.TestCase):
             async def is_enabled(self): return True
             async def get_attribute(self, name): return 'weui-desktop-btn weui-desktop-btn_disabled'
         self.assertFalse(asyncio.run(StrictForm.button_ready(Button())))
+
+    def test_persistent_session_exit_detaches_without_closing_edge(self):
+        session = PersistentTencentSession(self.module, self.state, self.args)
+        session.playwright = SimpleNamespace(stop=AsyncMock())
+        session.browser = SimpleNamespace(close=AsyncMock())
+        session.context = SimpleNamespace(close=AsyncMock())
+        asyncio.run(session.__aexit__(None, None, None))
+        session.playwright.stop.assert_awaited_once()
+        session.browser.close.assert_not_awaited()
+        session.context.close.assert_not_awaited()
 
 
 if __name__ == '__main__': unittest.main()

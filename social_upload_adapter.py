@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import asyncio
+from datetime import datetime, timedelta, timezone
 import hashlib
 from importlib.metadata import PackageNotFoundError, version as package_version
 import json
@@ -10,14 +11,17 @@ from pathlib import Path
 import subprocess
 import sys
 import types
+from urllib.parse import urlsplit
 
 from codex_video import ROOT, Workspace, PUBLISH_CHECKS, digest, validate_publish_copy
-from publish_video import (PublicationState, PublishError, resolve_owner, notify_qr,
-                           cleanup_login_files, terminal_publication_result)
+from publish_video import (CDP_URL, PublicationState, PublishError, resolve_owner,
+                           notify_qr, cleanup_login_files, ensure_edge,
+                           terminal_publication_result)
 
 UPSTREAM_SHA = "0012d2c355f88f683cc38dde2a2db209e14091bc"
 PATCHRIGHT_VERSION = "1.62.3"
 UPSTREAM = ROOT / "social-auto-upload"
+BEIJING_TIME = timezone(timedelta(hours=8))
 
 
 def load_tencent():
@@ -214,7 +218,119 @@ def account_path(state):
     return folder / 'social-account.json'
 
 
-async def publish(args, state, module=None, form_type=StrictForm):
+class PersistentTencentSession:
+    """复用外部启动的同一个 Edge 完成登录、上传和结果核验。"""
+
+    def __init__(self, module, state, args):
+        self.module = module
+        self.state = state
+        self.args = args
+        self.playwright = None
+        self.browser = None
+        self.context = None
+        self.page = None
+
+    async def __aenter__(self):
+        ensure_edge()
+        self.playwright = await self.module.async_playwright().start()
+        self.browser = await self.playwright.chromium.connect_over_cdp(CDP_URL)
+        pages = [page for context in self.browser.contexts for page in context.pages
+                 if urlsplit(page.url).netloc == "channels.weixin.qq.com"]
+        if pages:
+            self.page = pages[-1]
+            self.context = self.page.context
+        else:
+            if not self.browser.contexts:
+                raise PublishError("EDGE_CONTEXT_MISSING", "持久 Edge 没有可用浏览器上下文")
+            self.context = self.browser.contexts[0]
+            self.page = await self.context.new_page()
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        # 只断开自动化连接；外部启动的 Edge、页面和上下文继续保留。
+        if self.playwright is not None:
+            await self.playwright.stop()
+
+    async def login(self, account_file):
+        await self.page.goto(self.module.TENCENT_HOME_URL, wait_until="domcontentloaded")
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+        if await self.module._is_tencent_login_completed(self.page):
+            await self.context.storage_state(path=str(account_file))
+            return {"success": True, "status": "cookie_valid",
+                    "message": "持久 Edge 登录态有效", "current_url": self.page.url}
+
+        await self.page.goto(self.module.TENCENT_LOGIN_URL, wait_until="domcontentloaded")
+        qr_callback = QRCallback(self.state, account_file.parent)
+        qrcode_info = await self.module._save_tencent_qrcode(
+            self.page, str(account_file), qrcode_callback=qr_callback)
+        checks = max(1, int(self.args.login_timeout / 3))
+        result = await self.module._wait_for_tencent_login(
+            self.page, str(account_file), qrcode_info,
+            qrcode_callback=qr_callback, poll_interval=3, max_checks=checks)
+        if result.get("success") is True:
+            await self.context.storage_state(path=str(account_file))
+        return result
+
+    async def upload(self, uploader):
+        await uploader.validate_upload_args()
+        await uploader.open_upload_page(self.page)
+        await uploader.upload_video_file(self.page, uploader.file_path)
+        await uploader.prepare_video_for_publish(self.page)
+        await uploader.wait_for_upload_complete(self.page)
+        await uploader.apply_collection(self.page)
+        await uploader.apply_original_statement(self.page)
+        await uploader.set_thumbnail(self.page)
+        if uploader.publish_strategy == self.module.TENCENT_PUBLISH_STRATEGY_SCHEDULED and uploader.publish_date != 0:
+            await uploader.set_schedule_time_tencent(self.page, uploader.publish_date)
+        await uploader.set_short_title(self.page, uploader.title, uploader.short_title)
+        await uploader.submit_publish(self.page)
+
+    async def save_state(self, account_file):
+        if self.context is not None:
+            await self.context.storage_state(path=str(account_file))
+
+    @staticmethod
+    def _normalized(text):
+        return " ".join(text.split())
+
+    async def reconcile_submission(self, info, timeout=30):
+        """只读核对最近作品，绝不再次点击发表。"""
+        await self.page.goto(self.module.TENCENT_MANAGE_URL, wait_until="domcontentloaded")
+        expected = self._normalized(info["description"].strip() + " " + " ".join(
+            "#" + tag.lstrip("#") for tag in info["hashtags"]))
+        deadline = asyncio.get_running_loop().time() + timeout
+        while asyncio.get_running_loop().time() < deadline:
+            items = self.page.locator(".post-feed-item")
+            for index in range(await items.count()):
+                item = items.nth(index)
+                title = item.locator(".post-title")
+                if await title.count() != 1 or self._normalized(await title.inner_text()) != expected:
+                    continue
+                time_label = item.locator(".time-label")
+                if await time_label.count() != 1:
+                    continue
+                published_at = (await time_label.inner_text()).strip()
+                try:
+                    observed = datetime.strptime(published_at, "%Y年%m月%d日 %H:%M").replace(
+                        tzinfo=BEIJING_TIME)
+                    age_seconds = abs((datetime.now(BEIJING_TIME) - observed).total_seconds())
+                except ValueError:
+                    continue
+                if age_seconds > 30 * 60:
+                    continue
+                status = item.locator(".post-status-info")
+                platform_status = (await status.inner_text()).strip() if await status.count() == 1 else "已进入作品列表"
+                return (f"作品列表匹配本轮文案，发布时间 {published_at}，"
+                        f"状态 {platform_status}，地址 {self.page.url}")
+            await self.page.wait_for_timeout(1000)
+        return None
+
+
+async def publish(args, state, module=None, form_type=StrictForm,
+                  session_type=PersistentTencentSession):
     progress = state.prepare()
     terminal = terminal_publication_result(args, progress)
     if terminal:
@@ -224,60 +340,81 @@ async def publish(args, state, module=None, form_type=StrictForm):
         module = module or load_tencent()
         state.verify_ownership()
         account_file = account_path(state)
-        result = await asyncio.wait_for(module.tencent_setup(str(account_file), handle=True,
-            return_detail=True, qrcode_callback=QRCallback(state, account_file.parent), headless=False), args.login_timeout)
-        if not isinstance(result, dict) or result.get("success") is not True:
-            message = result.get("message", "登录失败") if isinstance(result, dict) else '腾讯登录返回了非字典结果'
-            raise PublishError("LOGIN_FAILED", str(message))
-        state.verify_ownership()
-        if state.progress()["status"] != "uploading":
-            state.step("uploading", "Tencent setup 已确认登录，开始上游视频上传")
-        uploader = module.TencentVideo(title=info["short_title"], file_path=info["video"],
-            tags=info["hashtags"], publish_date=0, account_file=str(account_file),
-            desc=info["description"], short_title=info["short_title"],
-            collection_name=info["settings"]["collection"], headless=False, debug=False)
-        uploaded = False
-        completed = False
-        original_upload = uploader.upload_video_file
-        original_wait = uploader.wait_for_upload_complete
-        async def upload_file(page, file_path):
-            nonlocal uploaded
+        async with session_type(module, state, args) as session:
+            result = await asyncio.wait_for(session.login(account_file), args.login_timeout)
+            if not isinstance(result, dict) or result.get("success") is not True:
+                message = result.get("message", "登录失败") if isinstance(result, dict) else '持久 Edge 登录返回了非字典结果'
+                raise PublishError("LOGIN_FAILED", str(message))
             state.verify_ownership()
-            if Path(file_path).resolve() != Path(info["video"]).resolve() or digest(file_path) != progress["video_sha256"]:
-                raise PublishError("VIDEO_CHANGED", "成片不一致")
-            await original_upload(page, file_path)
-            uploaded = True
-        async def wait_complete(page):
-            nonlocal completed
-            await asyncio.wait_for(original_wait(page), args.upload_timeout)
-            completed = True
-        uploader.upload_video_file = upload_file
-        uploader.wait_for_upload_complete = wait_complete
-        async def before_submit(page):
-            state.verify_ownership()
-            account, checks = await form_type(page).verify(info)
-            checks.update(video=uploaded, upload_complete=completed)
-            state.step("ready", "实际腾讯上传页逐项填写并核验完成", account=account, checks=checks)
-            if args.dry_run:
-                return False
-            state.step("submitting", "已落盘提交意图，授权上游单次 click")
-            # Flush the persisted intent before granting the only click authorization.
-            with (state.folder / 'publish-progress.json').open('r+b') as intent:
-                os.fsync(intent.fileno())
-            state.verify_ownership()
-            return True
-        async def on_published(receipt):
-            state.step("published", receipt, receipt=receipt)
-        uploader.before_submit = before_submit
-        uploader.on_published = on_published
-        uploader.result_timeout = args.result_timeout
-        await uploader.main()
-        final = state.progress()
-        if final["status"] == "published":
-            return {"status": "PUBLISHED", "run_id": args.run, "receipt": uploader.publish_receipt}
-        if args.dry_run and final["status"] == "ready":
-            return {"status": "READY", "run_id": args.run}
-        raise PublishError("UNVERIFIED_RESULT", "上游正常返回但没有平台成功证据")
+            if state.progress()["status"] != "uploading":
+                state.step("uploading", "持久 Edge 已确认登录，开始同一窗口视频上传")
+            uploader = module.TencentVideo(title=info["short_title"], file_path=info["video"],
+                tags=info["hashtags"], publish_date=0, account_file=str(account_file),
+                desc=info["description"], short_title=info["short_title"],
+                collection_name=info["settings"]["collection"], headless=False, debug=False)
+            uploaded = False
+            completed = False
+            original_upload = uploader.upload_video_file
+            original_wait = uploader.wait_for_upload_complete
+            async def upload_file(page, file_path):
+                nonlocal uploaded
+                state.verify_ownership()
+                if Path(file_path).resolve() != Path(info["video"]).resolve() or digest(file_path) != progress["video_sha256"]:
+                    raise PublishError("VIDEO_CHANGED", "成片不一致")
+                await original_upload(page, file_path)
+                uploaded = True
+            async def wait_complete(page):
+                nonlocal completed
+                await asyncio.wait_for(original_wait(page), args.upload_timeout)
+                completed = True
+            uploader.upload_video_file = upload_file
+            uploader.wait_for_upload_complete = wait_complete
+            async def before_submit(page):
+                state.verify_ownership()
+                account, checks = await form_type(page).verify(info)
+                checks.update(video=uploaded, upload_complete=completed)
+                state.step("ready", "实际腾讯上传页逐项填写并核验完成", account=account, checks=checks)
+                if args.dry_run:
+                    return False
+                state.step("submitting", "已落盘提交意图，授权上游单次 click")
+                # Flush the persisted intent before granting the only click authorization.
+                with (state.folder / 'publish-progress.json').open('r+b') as intent:
+                    os.fsync(intent.fileno())
+                state.verify_ownership()
+                return True
+            async def on_published(receipt):
+                state.step("published", receipt, receipt=receipt)
+            uploader.before_submit = before_submit
+            uploader.on_published = on_published
+            uploader.result_timeout = args.result_timeout
+            try:
+                await session.upload(uploader)
+            except Exception as exc:
+                if state.progress()["status"] == "submitting":
+                    receipt = None
+                    reconcile_error = None
+                    try:
+                        receipt = await session.reconcile_submission(info)
+                    except Exception as error:
+                        reconcile_error = error
+                    if receipt:
+                        state.step("published", receipt, receipt=receipt)
+                        return {"status": "PUBLISHED", "run_id": args.run, "receipt": receipt}
+                    detail = f"提交后作品列表未找到匹配记录：{exc}"
+                    if reconcile_error is not None:
+                        detail += f"；列表核验异常：{reconcile_error}"
+                    state.step("uncertain", detail)
+                    raise PublishError("UNCERTAIN_SUBMISSION", "禁止自动重发，持久 Edge 已停留在作品列表供核对") from exc
+                raise
+            finally:
+                await session.save_state(account_file)
+            final = state.progress()
+            if final["status"] == "published":
+                return {"status": "PUBLISHED", "run_id": args.run,
+                        "receipt": getattr(uploader, "publish_receipt", "平台成功已登记")}
+            if args.dry_run and final["status"] == "ready":
+                return {"status": "READY", "run_id": args.run}
+            raise PublishError("UNVERIFIED_RESULT", "上游正常返回但没有平台成功证据")
     except Exception as exc:
         current = state.progress()["status"]
         if current == "published":
