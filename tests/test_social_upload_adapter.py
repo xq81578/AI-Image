@@ -211,6 +211,97 @@ class SocialTests(unittest.TestCase):
         self.assertIs(result, locator)
         page.wait_for_timeout.assert_awaited_once_with(200)
 
+    def test_unique_attached_waits_for_delayed_hidden_input(self):
+        class DelayedInput:
+            def __init__(self): self.count_checks = 0
+            async def count(self):
+                self.count_checks += 1
+                return 0 if self.count_checks == 1 else 1
+
+        locator = DelayedInput()
+        page = SimpleNamespace(wait_for_timeout=AsyncMock())
+        result = asyncio.run(StrictForm(page).unique_attached(
+            locator, "定时单选框", timeout=1000))
+        self.assertIs(result, locator)
+        page.wait_for_timeout.assert_awaited_once_with(100)
+
+    def test_wait_button_ready_waits_for_delayed_publish_button(self):
+        class DelayedButton:
+            def __init__(self): self.enabled_checks = 0
+            async def count(self): return 1
+            async def is_visible(self): return True
+            async def is_enabled(self):
+                self.enabled_checks += 1
+                return self.enabled_checks >= 2
+            async def get_attribute(self, name): return None
+
+        button = DelayedButton()
+        page = SimpleNamespace(wait_for_timeout=AsyncMock())
+        asyncio.run(StrictForm(page).wait_button_ready(button))
+        self.assertEqual(button.enabled_checks, 2)
+        page.wait_for_timeout.assert_awaited_once_with(100)
+
+    def test_select_waits_for_delayed_option_after_trigger(self):
+        value = "不显示位置"
+
+        class DelayedSelectPage:
+            def __init__(self):
+                self.rendered = False
+                self.selected = False
+                self.selection_pending = False
+                self.waits = []
+                self.display = self.Display(self)
+                self.trigger = self.Trigger(self)
+                self.options = self.Options(self)
+
+            async def wait_for_timeout(self, milliseconds):
+                self.waits.append(milliseconds)
+                if self.selection_pending:
+                    self.selected = True
+                else:
+                    self.rendered = True
+
+            def locator(self, selector):
+                return {
+                    ".display": self.display,
+                    ".trigger": self.trigger,
+                    ".options": self.options,
+                }[selector]
+
+            class Display:
+                def __init__(self, page): self.page = page
+                async def count(self): return 1
+                def nth(self, index): return self
+                async def is_visible(self): return True
+                async def inner_text(self):
+                    return value if self.page.selected else ""
+
+            class Trigger:
+                def __init__(self, page): self.page = page
+                async def count(self): return 1
+                def nth(self, index): return self
+                async def is_visible(self): return True
+                async def click(self): pass
+
+            class Options:
+                def __init__(self, page):
+                    self.page = page
+                    self.probes = 0
+                async def count(self):
+                    self.probes += 1
+                    return 1 if self.page.rendered else 0
+                def nth(self, index): return self
+                async def is_visible(self): return self.page.rendered
+                async def inner_text(self): return value
+                async def click(self): self.page.selection_pending = True
+
+        page = DelayedSelectPage()
+        asyncio.run(StrictForm(page).select(".display", ".trigger", ".options", value))
+        self.assertTrue(page.selected)
+        self.assertIn(200, page.waits)
+        self.assertIn(100, page.waits)
+        self.assertGreaterEqual(page.options.probes, 2)
+
     def test_selected_location_and_collection_value_selectors_are_supported(self):
         self.assertIn('.not-display', StrictForm.LOCATION_VALUE)
         self.assertIn('.collection-text', StrictForm.COLLECTION_VALUE)

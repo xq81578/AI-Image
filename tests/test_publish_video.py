@@ -304,6 +304,202 @@ class PublishVideoTests(unittest.TestCase):
         self.assertEqual(state.events[-1]["status"], "blocked")
         self.assertNotIn("submit", channels.calls)
 
+    def test_legacy_dropdowns_wait_for_delayed_options_after_trigger(self):
+        value = "不显示位置"
+
+        class DelayedLegacyPage:
+            def __init__(self):
+                self.rendered = False
+                self.selected = False
+                self.selection_pending = False
+                self.waits = []
+                self.option_probes = 0
+                self.row = self.Row(self)
+                self.trigger = self.Trigger(self)
+                self.options = self.Options(self)
+
+            def set_default_timeout(self, milliseconds):
+                self.default_timeout = milliseconds
+
+            def wait_for_timeout(self, milliseconds):
+                self.waits.append(milliseconds)
+                if self.selection_pending:
+                    self.selected = True
+                else:
+                    self.rendered = True
+
+            def locator(self, selector):
+                return {
+                    'input[type="file"][accept*="video"]': self.Upload(self),
+                    ".position-display .location-name, .position-display .not-display": self.row,
+                    ".position-display": self.trigger,
+                    ".location-filter-wrap .option-item": self.options,
+                    ".mark-tag-select .select-value": self.row,
+                    ".mark-tag-select .select-display": self.trigger,
+                    ".mark-tag-option .option-main": self.options,
+                }[selector]
+
+            class Upload:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+
+            class Row:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+                def is_visible(self): return True
+                def inner_text(self):
+                    return value if self.page.selected else ""
+
+            class Trigger:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+                def is_visible(self): return True
+                def click(self): pass
+
+            class Options:
+                def __init__(self, page): self.page = page
+                def filter(self, **kwargs): return self
+                def count(self):
+                    self.page.option_probes += 1
+                    return 1 if self.page.rendered else 0
+                def nth(self, index): return self
+                def is_visible(self): return self.page.rendered
+                def inner_text(self): return value
+                def click(self): self.page.selection_pending = True
+
+        for chooser in ("option", "mark"):
+            with self.subTest(chooser=chooser):
+                page = DelayedLegacyPage()
+                channels = publisher.ChannelsPage(page)
+                if chooser == "option":
+                    channels._choose_option("位置", value)
+                else:
+                    channels._choose_mark(value)
+                self.assertTrue(page.selected)
+                self.assertIn(200, page.waits)
+                self.assertIn(100, page.waits)
+                self.assertGreaterEqual(page.option_probes, 2)
+
+    def test_legacy_radio_waits_for_delayed_option(self):
+        desired = "定时"
+
+        class DelayedRadioPage:
+            def __init__(self):
+                self.rendered = False
+                self.checked = False
+                self.waits = []
+                self.option_probes = 0
+                self.rows = self.Rows(self)
+                self.options = self.Options(self)
+
+            def set_default_timeout(self, milliseconds):
+                self.default_timeout = milliseconds
+
+            def wait_for_timeout(self, milliseconds):
+                self.waits.append(milliseconds)
+                self.rendered = True
+
+            def locator(self, selector):
+                return {
+                    'input[type="file"][accept*="video"]': self.Upload(self),
+                    ".form-item": self.rows,
+                    ".weui-desktop-radio-group": self.options,
+                }[selector]
+
+            class Upload:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+
+            class Rows:
+                def __init__(self, page): self.page = page
+                def evaluate_all(self, *args): return self.page.checked
+
+            class Options:
+                def __init__(self, page): self.page = page
+                def get_by_text(self, text, exact=True): return self
+                def count(self):
+                    self.page.option_probes += 1
+                    return 1 if self.page.rendered else 0
+                def nth(self, index): return self
+                def is_visible(self): return self.page.rendered
+                def inner_text(self): return desired
+                def click(self): self.page.checked = True
+
+        page = DelayedRadioPage()
+        publisher.ChannelsPage(page)._ensure_radio("定时发表", desired)
+        self.assertTrue(page.checked)
+        self.assertTrue(page.waits)
+        self.assertGreaterEqual(page.option_probes, 2)
+
+    def test_legacy_original_waits_for_delayed_dialog(self):
+        class DelayedOriginalPage:
+            def __init__(self):
+                self.dialog_visible = False
+                self.checked = False
+                self.agreement_checked = False
+                self.confirmed = False
+                self.waits = []
+                self.checkbox = self.Checkbox(self)
+                self.dialog = self.Dialog(self)
+
+            def set_default_timeout(self, milliseconds):
+                self.default_timeout = milliseconds
+
+            def wait_for_timeout(self, milliseconds):
+                self.waits.append(milliseconds)
+                self.dialog_visible = True
+
+            def locator(self, selector):
+                if selector == 'input[type="file"][accept*="video"]':
+                    return self.Upload(self)
+                if selector in ('.declare-original-checkbox input[type="checkbox"]',
+                                '.declare-original-checkbox input[type=checkbox]'):
+                    return self.checkbox
+                if selector == '.declare-original-dialog .weui-desktop-dialog__wrp':
+                    return self.dialog
+                raise KeyError(selector)
+
+            class Upload:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+
+            class Checkbox:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+                def is_checked(self): return self.page.checked
+                def check(self): self.page.checked = True
+
+            class Agreement:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+                def is_checked(self): return self.page.agreement_checked
+                def check(self): self.page.agreement_checked = True
+
+            class Confirm:
+                def __init__(self, page): self.page = page
+                def count(self): return 1
+                def is_visible(self): return True
+                def is_enabled(self): return True
+                def get_attribute(self, name): return None
+                def click(self):
+                    self.page.confirmed = True
+                    self.page.dialog_visible = False
+
+            class Dialog:
+                def __init__(self, page): self.page = page
+                def count(self): return 1 if self.page.dialog_visible else 0
+                def nth(self, index): return self
+                def is_visible(self): return self.page.dialog_visible
+                def locator(self, selector): return DelayedOriginalPage.Agreement(self.page)
+                def get_by_role(self, role, name, exact=True):
+                    return DelayedOriginalPage.Confirm(self.page)
+
+        page = DelayedOriginalPage()
+        publisher.ChannelsPage(page)._ensure_original()
+        self.assertTrue(page.agreement_checked)
+        self.assertTrue(page.confirmed)
+        self.assertTrue(page.waits)
+
     def test_unexpected_pre_submit_browser_error_is_blocked(self):
         state = FakeState(self.folder, self.progress)
         channels = FakeChannels()

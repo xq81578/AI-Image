@@ -400,8 +400,8 @@ class ChannelsPage:
 
     def _row_has_value(self, label, desired):
         selectors = {
-            "位置": ".position-display .location-name",
-            "添加到合集": ".post-album-display .display-text",
+            "位置": ".position-display .location-name, .position-display .not-display",
+            "添加到合集": ".post-album-display .display-text, .post-album-display .collection-text",
             "链接": ".link-display-wrap",
             "活动": ".activity-display",
             "视频标注": ".mark-tag-select .select-value",
@@ -412,6 +412,48 @@ class ChannelsPage:
         locator = self._content_frame().locator(selector)
         return (locator.count() == 1 and locator.is_visible()
                 and locator.inner_text().strip() == desired)
+
+    @staticmethod
+    def _matching_visible_options(options, desired):
+        return [options.nth(index) for index in range(options.count())
+                if options.nth(index).is_visible()
+                and desired in options.nth(index).inner_text().strip().splitlines()]
+
+    def _wait_for_option(self, options, desired, timeout=10):
+        deadline = time.monotonic() + timeout
+        while True:
+            visible = self._matching_visible_options(options, desired)
+            if len(visible) == 1:
+                return visible[0]
+            if time.monotonic() >= deadline:
+                raise PublishError("FORM_OPTION_NOT_FOUND", f"未找到唯一的'{desired}'选项")
+            self.page.wait_for_timeout(200)
+
+    def _wait_for_row_value(self, label, desired, timeout=5):
+        deadline = time.monotonic() + timeout
+        while not self._row_has_value(label, desired):
+            if time.monotonic() >= deadline:
+                raise PublishError("FORM_VALUE_MISMATCH", f"'{label}'未设置为'{desired}'")
+            self.page.wait_for_timeout(100)
+
+    def _wait_for_unique_attached(self, locator, name, timeout=5):
+        deadline = time.monotonic() + timeout
+        while locator.count() != 1:
+            if time.monotonic() >= deadline:
+                raise PublishError("FORM_CONTROL_NOT_FOUND", name)
+            self.page.wait_for_timeout(100)
+        return locator
+
+    def _wait_for_unique_visible(self, locator, name, timeout=5):
+        deadline = time.monotonic() + timeout
+        while True:
+            visible = [locator.nth(index) for index in range(locator.count())
+                       if locator.nth(index).is_visible()]
+            if len(visible) == 1:
+                return visible[0]
+            if time.monotonic() >= deadline:
+                raise PublishError("FORM_CONTROL_NOT_FOUND", name)
+            self.page.wait_for_timeout(100)
 
     def _choose_option(self, label, desired):
         if self._row_has_value(label, desired):
@@ -427,22 +469,14 @@ class ChannelsPage:
         trigger_selector, option_selector = controls
         frame = self._content_frame()
         options = frame.locator(option_selector).filter(has_text=desired)
-        visible = [options.nth(index) for index in range(options.count())
-                   if options.nth(index).is_visible()
-                   and desired in options.nth(index).inner_text().splitlines()]
+        visible = self._matching_visible_options(options, desired)
         if not visible:
             trigger = frame.locator(trigger_selector)
             if trigger.count() != 1 or not trigger.is_visible():
                 raise PublishError("FORM_CONTROL_NOT_FOUND", f"未找到'{label}'选择控件")
             trigger.click()
-            visible = [options.nth(index) for index in range(options.count())
-                       if options.nth(index).is_visible()
-                       and desired in options.nth(index).inner_text().splitlines()]
-        if len(visible) != 1:
-            raise PublishError("FORM_OPTION_NOT_FOUND", f"未找到唯一的'{desired}'选项")
-        visible[0].click()
-        if not self._row_has_value(label, desired):
-            raise PublishError("FORM_VALUE_MISMATCH", f"'{label}'未设置为'{desired}'")
+        self._wait_for_option(options, desired).click()
+        self._wait_for_row_value(label, desired)
 
     def _ensure_text_setting(self, label, desired):
         if not self._row_has_value(label, desired):
@@ -469,13 +503,12 @@ class ChannelsPage:
         frame = self._content_frame()
         group = frame.locator('.weui-desktop-radio-group')
         option = group.get_by_text(desired, exact=True)
-        visible = [option.nth(index) for index in range(option.count())
-                   if option.nth(index).is_visible()]
-        if len(visible) != 1:
-            raise PublishError("FORM_OPTION_NOT_FOUND", f"未找到唯一的'{desired}'选项")
-        visible[0].click()
-        if not self._checked_choice(label, desired):
-            raise PublishError("FORM_VALUE_MISMATCH", f"'{label}'未设置为'{desired}'")
+        self._wait_for_option(option, desired).click()
+        deadline = time.monotonic() + 5
+        while not self._checked_choice(label, desired):
+            if time.monotonic() >= deadline:
+                raise PublishError("FORM_VALUE_MISMATCH", f"'{label}'未设置为'{desired}'")
+            self.page.wait_for_timeout(100)
 
     def _original_checked(self):
         checkbox = self._content_frame().locator(
@@ -486,26 +519,29 @@ class ChannelsPage:
         if self._original_checked():
             return
         frame = self._content_frame()
-        checkbox = frame.locator('.declare-original-checkbox input[type=checkbox]')
-        if checkbox.count() != 1:
-            raise PublishError('FORM_CONTROL_NOT_FOUND', '未找到声明原创选项')
+        checkbox = self._wait_for_unique_attached(
+            frame.locator('.declare-original-checkbox input[type=checkbox]'), '未找到声明原创选项')
         checkbox.check()
-        dialog = frame.locator('.declare-original-dialog .weui-desktop-dialog__wrp')
-        if dialog.count() and dialog.is_visible():
-            agreement = dialog.locator('input[type="checkbox"]')
-            if agreement.count() != 1:
-                raise PublishError('FORM_CONTROL_NOT_FOUND', '未找到原创声明协议选项')
-            if not agreement.is_checked():
-                agreement.check()
-            confirm = dialog.get_by_role('button', name='声明原创', exact=True)
-            deadline = time.monotonic() + 10
-            while time.monotonic() < deadline:
-                if confirm.count() == 1 and self._button_ready(confirm):
-                    confirm.click()
-                    break
-                frame.wait_for_timeout(250)
-            else:
-                raise PublishError('FORM_CONTROL_NOT_FOUND', '原创声明确认按钮尚不可点击')
+        dialog = self._wait_for_unique_visible(
+            frame.locator('.declare-original-dialog .weui-desktop-dialog__wrp'), '未找到原创声明确认窗口')
+        agreement = self._wait_for_unique_attached(
+            dialog.locator('input[type="checkbox"]'), '未找到原创声明协议选项')
+        if not agreement.is_checked():
+            agreement.check()
+        confirm = dialog.get_by_role('button', name='声明原创', exact=True)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if confirm.count() == 1 and self._button_ready(confirm):
+                confirm.click()
+                break
+            frame.wait_for_timeout(250)
+        else:
+            raise PublishError('FORM_CONTROL_NOT_FOUND', '原创声明确认按钮尚不可点击')
+        deadline = time.monotonic() + 5
+        while dialog.is_visible():
+            if time.monotonic() >= deadline:
+                raise PublishError('FORM_VALUE_MISMATCH', '原创声明确认窗口未关闭')
+            frame.wait_for_timeout(100)
         if not self._original_checked():
             raise PublishError('FORM_VALUE_MISMATCH', '声明原创未成功勾选')
 
@@ -514,22 +550,14 @@ class ChannelsPage:
             return
         frame = self._content_frame()
         options = frame.locator(".mark-tag-option .option-main").filter(has_text=desired)
-        visible = [options.nth(index) for index in range(options.count())
-                   if options.nth(index).is_visible()
-                   and options.nth(index).inner_text().strip() == desired]
+        visible = self._matching_visible_options(options, desired)
         if not visible:
             trigger = frame.locator(".mark-tag-select .select-display")
             if trigger.count() != 1 or not trigger.is_visible():
                 raise PublishError('FORM_CONTROL_NOT_FOUND', '未找到视频标注选择控件')
             trigger.click()
-            visible = [options.nth(index) for index in range(options.count())
-                       if options.nth(index).is_visible()
-                       and options.nth(index).inner_text().strip() == desired]
-        if len(visible) != 1:
-            raise PublishError("FORM_OPTION_NOT_FOUND", f"未找到唯一的'{desired}'选项")
-        visible[0].click()
-        if not self._row_has_value('视频标注', desired):
-            raise PublishError("FORM_VALUE_MISMATCH", f"视频标注未设置为'{desired}'")
+        self._wait_for_option(options, desired).click()
+        self._wait_for_row_value('视频标注', desired)
 
 
 

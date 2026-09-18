@@ -106,6 +106,14 @@ class StrictForm:
     async def text(self, selector):
         return (await (await self.unique(selector)).inner_text()).strip()
 
+    async def unique_attached(self, locator, name, timeout=5000):
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while await locator.count() != 1:
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_CONTROL_NOT_FOUND", name)
+            await self.page.wait_for_timeout(100)
+        return locator
+
     @staticmethod
     async def visible(locator):
         for index in range(await locator.count()):
@@ -120,11 +128,13 @@ class StrictForm:
         classes = await button.get_attribute("class")
         return not classes or "weui-desktop-btn_disabled" not in classes
 
-    async def wait_button_ready(self, button, timeout=5000):
+    async def wait_button_ready(self, button, timeout=5000,
+                                code="FORM_VALUE_MISMATCH",
+                                message="声明原创确认按钮未启用"):
         deadline = asyncio.get_running_loop().time() + timeout / 1000
         while not await self.button_ready(button):
             if asyncio.get_running_loop().time() >= deadline:
-                raise PublishError("FORM_VALUE_MISMATCH", "声明原创确认按钮未启用")
+                raise PublishError(code, message)
             await self.page.wait_for_timeout(100)
 
     async def wait_hidden(self, locator, timeout=5000):
@@ -134,19 +144,46 @@ class StrictForm:
                 raise PublishError("FORM_VALUE_MISMATCH", "声明原创二次确认窗口未关闭")
             await self.page.wait_for_timeout(100)
 
+    async def matching_options(self, selector, value):
+        matches = []
+        candidates = self.page.locator(selector)
+        for index in range(await candidates.count()):
+            candidate = candidates.nth(index)
+            if await candidate.is_visible() and value in (await candidate.inner_text()).strip().splitlines():
+                matches.append(candidate)
+        return matches
+
+    async def wait_option(self, selector, value, timeout=10000):
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while True:
+            matches = await self.matching_options(selector, value)
+            if len(matches) == 1:
+                return matches[0]
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_OPTION_NOT_FOUND", value)
+            await self.page.wait_for_timeout(200)
+
+    async def wait_text(self, selector, value, timeout=5000):
+        item = self.page.locator(selector)
+        deadline = asyncio.get_running_loop().time() + timeout / 1000
+        while True:
+            visible = []
+            for index in range(await item.count()):
+                candidate = item.nth(index)
+                if await candidate.is_visible():
+                    visible.append(candidate)
+            if len(visible) == 1 and (await visible[0].inner_text()).strip() == value:
+                return
+            if asyncio.get_running_loop().time() >= deadline:
+                raise PublishError("FORM_VALUE_MISMATCH", value)
+            await self.page.wait_for_timeout(100)
+
     async def select(self, display, trigger, options, value):
         if await self.text(display) != value:
-            await (await self.unique(trigger)).click()
-            candidates = self.page.locator(options)
-            matches = []
-            for item in await candidates.all():
-                if await item.is_visible() and value in (await item.inner_text()).strip().splitlines():
-                    matches.append(item)
-            if len(matches) != 1:
-                raise PublishError("FORM_OPTION_NOT_FOUND", value)
-            await matches[0].click()
-        if await self.text(display) != value:
-            raise PublishError("FORM_VALUE_MISMATCH", value)
+            if not await self.matching_options(options, value):
+                await (await self.unique(trigger)).click()
+            await (await self.wait_option(options, value)).click()
+        await self.wait_text(display, value)
 
     async def verify(self, info):
         s = info["settings"]
@@ -169,18 +206,18 @@ class StrictForm:
         if s["link"] is not None or await self.text(".link-display-wrap") != "选择链接":
             raise PublishError("FORM_VALUE_MISMATCH", "必须无链接")
         rows = self.page.locator(".form-item").filter(has=self.page.get_by_text("定时发表", exact=True))
-        radio = rows.locator("label").filter(has_text=s["schedule"]).locator('input[type="radio"]')
-        if await radio.count() != 1:
-            raise PublishError("FORM_CONTROL_NOT_FOUND", "不定时单选框")
+        radio = await self.unique_attached(
+            rows.locator("label").filter(has_text=s["schedule"]).locator('input[type="radio"]'),
+            "不定时单选框")
         await radio.check()
-        original = self.page.locator('.declare-original-checkbox input[type="checkbox"]')
-        if await original.count() != 1 or not s["original_requested"]:
+        if not s["original_requested"]:
             raise PublishError("FORM_CONTROL_NOT_FOUND", "原创声明")
+        original = await self.unique_attached(
+            self.page.locator('.declare-original-checkbox input[type="checkbox"]'), "原创声明")
         await original.check()
         dialog = await self.unique('.declare-original-dialog .weui-desktop-dialog__wrp', timeout=5000)
-        agreement = dialog.locator('input[type="checkbox"]')
-        if await agreement.count() != 1:
-            raise PublishError("FORM_CONTROL_NOT_FOUND", "原创声明同意复选框")
+        agreement = await self.unique_attached(
+            dialog.locator('input[type="checkbox"]'), "原创声明同意复选框")
         await agreement.check()
         if not await agreement.is_checked():
             raise PublishError("FORM_VALUE_MISMATCH", "原创声明协议未勾选")
@@ -193,8 +230,8 @@ class StrictForm:
         if await self.visible(title_error):
             raise PublishError("TITLE_VALIDATION_FAILED", "页面提示标题包含特殊字符")
         publish_button = self.page.get_by_role("button", name="发表", exact=True)
-        if not await self.button_ready(publish_button):
-            raise PublishError("FORM_NOT_READY", "发表按钮仍处于禁用状态")
+        await self.wait_button_ready(publish_button, code="FORM_NOT_READY",
+                                     message="发表按钮仍处于禁用状态")
         checks = {"description": (await desc.inner_text()).strip() == description,
                   "short_title": await title.input_value() == info["short_title"],
                   "schedule": await radio.is_checked(), "original": await original.is_checked()}
