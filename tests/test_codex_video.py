@@ -30,14 +30,23 @@ class CodexVideoTests(unittest.TestCase):
         Image.new("RGB", (800, 900), "#557766").save(self.source)
         self.plan = {"title": "候车廊", "old_life": "等车回家", "loss": "停运后不再候车",
                      "change_route": "改为库房", "caption": "再也等不到那辆车",
-                     "anchors": ["廊柱", "台阶"], "changes": ["拆牌", "封窗", "拆凳"]}
+                     "first_glance_contrast": "缩小对照仍能看出从正常候车变为长期失管",
+                     "long_term_neglect": "多年封闭造成渗水、锈蚀和植物侵入",
+                     "anchors": ["廊柱", "台阶"],
+                     "changes": ["[功能] 候车设施拆除后不再使用",
+                                 "[结构/维护] 窗口封堵并留下长期渗水痕迹",
+                                 "[环境/设施/用途] 排水沟淤积且植物侵入"]}
         self.work.plan(self.folder, self.data, 1, self.plan)
 
     def review(self, kind):
         result = {"passed": True, "checks": {k: True for k in CHECKS[kind]},
                   "observations": "实际查看后记录测试证据"}
         if kind == "now":
-            result.update(visible_changes=["拆牌留孔", "窗口封堵", "墙面翻修"], loss_evidence="候车活动消失")
+            result.update(visible_changes=["[功能] 拆牌留孔", "[结构/维护] 窗口封堵",
+                                          "[环境/设施/用途] 墙面翻修"],
+                          loss_evidence="候车活动消失",
+                          first_glance_evidence="缩小对照仍能看出候车功能退出",
+                          long_term_neglect_evidence="封闭窗口、渗水和沟渠淤积共同证明长期失管")
         return result
 
     def accept(self, kind):
@@ -70,6 +79,51 @@ class CodexVideoTests(unittest.TestCase):
         invalid = dict(self.plan, old_year=1979)
         with self.assertRaisesRegex(ValueError, "1980"):
             self.work.plan(self.folder, self.data, 4, invalid)
+
+    def test_plan_requires_contrast_fields_and_change_categories(self):
+        for index, key in ((2, "first_glance_contrast"), (3, "long_term_neglect")):
+            invalid = dict(self.plan, **{key: ""})
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, f"缺少 {key}"):
+                self.work.plan(self.folder, self.data, index, invalid)
+        invalid = dict(self.plan, changes=["[功能] 功能退出", "[结构/维护] 窗口封堵", "只写了变化"])
+        with self.assertRaisesRegex(ValueError, "changes 必须覆盖"):
+            self.work.plan(self.folder, self.data, 4, invalid)
+
+    def test_now_attempt_rechecks_legacy_plan_requirements(self):
+        self.accept("old")
+        missing_field = dict(self.plan)
+        missing_field.pop("first_glance_contrast")
+        missing_category = dict(self.plan,
+                                changes=["[功能] 功能退出", "[结构/维护] 窗口封堵", "只有普通描述"])
+        for invalid, message in ((missing_field, "缺少 first_glance_contrast"),
+                                 (missing_category, "changes 必须覆盖")):
+            self.data["pairs"][0]["plan"] = invalid
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.work.attempt(self.folder, self.data, 1, "now", "now")
+        self.data["pairs"][0]["plan"] = self.plan
+
+    def test_now_review_requires_evidence_and_rejects_false_pass(self):
+        self.accept("old")
+        attempt = self.work.attempt(self.folder, self.data, 1, "now", "now")
+        for key in ("first_glance_evidence", "long_term_neglect_evidence"):
+            review = self.review("now")
+            review.pop(key)
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, f"需填写 {key}"):
+                self.work.record(self.folder, self.data, attempt["id"], self.source, review)
+
+        review = self.review("now")
+        review["visible_changes"] = ["[功能] 候车设施拆除", "[结构/维护] 窗口封堵", "只有普通描述"]
+        with self.assertRaisesRegex(ValueError, "visible_changes 必须覆盖"):
+            self.work.record(self.folder, self.data, attempt["id"], self.source, review)
+
+        review = self.review("now")
+        review["checks"]["first_glance_contrast"] = False
+        with self.assertRaisesRegex(ValueError, "存在未通过项"):
+            self.work.record(self.folder, self.data, attempt["id"], self.source, review)
+
+        accepted = self.work.record(self.folder, self.data, attempt["id"], self.source, self.review("now"))
+        self.assertEqual(accepted["status"], "accepted")
+        self.assertIsNotNone(self.data["pairs"][0]["now"])
 
     def test_requires_old_acceptance_and_serial_requests(self):
         with self.assertRaisesRegex(ValueError, "旧照"):
@@ -185,7 +239,11 @@ class ExecutionOwnershipTests(unittest.TestCase):
 
     def add_pending(self):
         plan = {"title": "候车廊", "old_life": "等车", "loss": "停运", "change_route": "库房",
-                "caption": "再也等不到", "anchors": ["廊柱", "台阶"], "changes": ["拆牌", "封窗", "拆凳"]}
+                "caption": "再也等不到", "first_glance_contrast": "缩小对照仍能看出功能退出",
+                "long_term_neglect": "多年封闭后的渗水、锈蚀和植物侵入",
+                "anchors": ["廊柱", "台阶"],
+                "changes": ["[功能] 候车设施拆除", "[结构/维护] 窗口封堵并渗水",
+                            "[环境/设施/用途] 排水沟淤积并长草"]}
         path = self.root / "plan.json"
         path.write_text(json.dumps(plan), encoding="utf-8")
         self.call_a("plan", pair=1, file=path)

@@ -25,12 +25,14 @@ CHECKS = {"old": ["realism", "era", "anatomy", "composition", "no_text",
                   "rural", "lived_in"],
           "now": ["realism", "era", "anatomy", "composition", "no_text",
                   "rural", "same_place", "time_change", "loss", "abandonment",
-                  "object_change", "viewpoint", "season_match"]}
+                  "object_change", "viewpoint", "season_match", "first_glance_contrast",
+                  "long_term_neglect"]}
 DEFAULTS = {"counts": [5, 6], "max_image_calls": 36, "attempts_per_image": 3,
             "candidates_per_pair": 3, "keep_images": False,
             "output_dir": "outputs/codex-time-echo"}
 PUBLISH_CHECKS = ("video", "upload_complete", "description", "short_title", "location",
                   "collection", "link", "activity", "schedule", "original", "ai_label")
+REQUIRED_CHANGE_PREFIXES = ("[功能]", "[结构/维护]", "[环境/设施/用途]")
 SHORT_TITLE_MIN = 7
 SHORT_TITLE_MAX = 15
 PUBLISH_TRANSITIONS = {
@@ -60,6 +62,21 @@ def validate_publish_copy(short_title, description):
     description_title = "".join(char for char in description.strip() if char.isalnum())
     if description_title != short_title:
         raise ValueError("视频描述须为短标题对应的同一句话，可带标点；话题请单独填写")
+
+
+def validate_now_plan_requirements(plan):
+    """确保今照规划包含可被审核追溯的强反差与长期失修路径。"""
+    for key in ("first_glance_contrast", "long_term_neglect"):
+        if not isinstance(plan.get(key), str) or not plan[key].strip():
+            raise ValueError(f"选题缺少 {key}")
+    changes = plan.get("changes")
+    if (not isinstance(changes, list) or len(changes) < 3
+            or not all(isinstance(value, str) and value.strip() for value in changes)):
+        raise ValueError("选题 changes 至少需要 3 项")
+    missing = [prefix for prefix in REQUIRED_CHANGE_PREFIXES
+               if not any(value.startswith(prefix) for value in changes)]
+    if missing:
+        raise ValueError(f"选题 changes 必须覆盖 {', '.join(missing)}")
 
 
 class ExecutionBusy(ValueError):
@@ -325,12 +342,14 @@ class Workspace:
         pair = self.pair(data, index)
         if pair["plan"] or pair["attempts"]:
             raise ValueError("已开始的选题不能改写；换题请使用 replace")
-        for key in ("title", "old_life", "loss", "change_route", "caption"):
+        for key in ("title", "old_life", "loss", "change_route", "caption",
+                    "first_glance_contrast", "long_term_neglect"):
             if not isinstance(plan.get(key), str) or not plan[key].strip():
                 raise ValueError(f"选题缺少 {key}")
         for key, minimum in (("anchors", 2), ("changes", 3)):
             if not isinstance(plan.get(key), list) or len(plan[key]) < minimum or not all(isinstance(v, str) and v.strip() for v in plan[key]):
                 raise ValueError(f"选题 {key} 至少需要 {minimum} 项")
+        validate_now_plan_requirements(plan)
         if "old_year" in plan:
             old_year = plan["old_year"]
             if not isinstance(old_year, int) or isinstance(old_year, bool):
@@ -348,6 +367,9 @@ class Workspace:
             raise ValueError("已成片批次不能继续生图")
         if not pair["plan"] or not prompt.strip():
             raise ValueError("先保存选题与完整提示词")
+        if kind == "now":
+            # 老批次可能在规则升级前已保存选题，进入今照阶段时仍需补齐新门槛。
+            validate_now_plan_requirements(pair["plan"])
         if pair[kind]:
             raise ValueError("该图片已合格，不需要重新调用生图")
         if kind == "now" and not pair["old"]:
@@ -394,8 +416,15 @@ class Workspace:
             details = review.get("visible_changes")
             if not isinstance(details, list) or len(details) < 3 or not all(isinstance(v, str) and v.strip() for v in details):
                 raise ValueError("今照需至少三项实际可见的跨年变化证据")
+            missing = [prefix for prefix in REQUIRED_CHANGE_PREFIXES
+                       if not any(value.startswith(prefix) for value in details)]
+            if missing:
+                raise ValueError(f"今照 visible_changes 必须覆盖 {', '.join(missing)}")
             if not isinstance(review.get("loss_evidence"), str) or not review["loss_evidence"].strip():
                 raise ValueError("今照需说明失去的生活细节")
+            for key in ("first_glance_evidence", "long_term_neglect_evidence"):
+                if not isinstance(review.get(key), str) or not review[key].strip():
+                    raise ValueError(f"今照需填写 {key}")
         target = folder / "assets" / f"{pair['index']:02d}-{kind}-{attempt_id:02d}.png"
         with Image.open(source) as original:
             original.load()
