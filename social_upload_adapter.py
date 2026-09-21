@@ -244,7 +244,15 @@ class StrictForm:
         })
         if not all(checks.values()):
             raise PublishError("FORM_VALUE_MISMATCH", "文案或固定设置核验失败")
-        account = await self.text(".account-info > .name")
+        account_name = self.page.locator(".account-info > .name")
+        if await account_name.count() == 1 and await account_name.is_visible():
+            account = (await account_name.inner_text()).strip()
+        else:
+            # 新版页面可能只展示头像，不再渲染账号名称；登录态已在进入发布页前校验。
+            avatar = self.page.locator(".account-info img.avatar")
+            if await avatar.count() != 1 or not await avatar.is_visible():
+                raise PublishError("FORM_CONTROL_NOT_FOUND", "账号身份标识")
+            account = "已登录视频号（页面仅显示头像）"
         return account, checks
 
 
