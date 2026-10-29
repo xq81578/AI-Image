@@ -6,7 +6,7 @@
 
 在本项目的 Codex 任务中输入“使用 $time-echo-video 生成一条视频”即可运行。技能源码位于 [skills/time-echo-video/SKILL.md](skills/time-echo-video/SKILL.md)，本地助手为 `codex_video.py`。助手负责文件、进度、次数上限和视频合成，生图及主观质量判断由 Codex 完成；单独双击 Python 脚本不会启动智能体生图。
 
-每轮随机 5 或 6 组，成片 20 或 24 秒，旧照在上、今照在下、带年份、1080×1920、30fps，沿用 4 秒/组和 0.6 秒转场。今照保留识别地点的主要结构，允许红纸、招牌、装修、设施与用途消失或更新；审核会拒绝“只是人少了，十年前的细节原封不动”的画面。情绪来自生活的缺席，也可以来自翻新后的陌生感。
+每轮随机 5 或 6 组，成片 20 或 24 秒，旧照在上、今照在下、带年份、1080×1920、30fps，沿用 4 秒/组和 0.6 秒转场。今照主体及背景所有可见人工建筑和设施一律走停用、弃置、失修、拆除或原址残迹的方向，不保留继续居住、正常维护、翻新或改作的路线。以 2–4 个地点骨架或原址痕迹保持可辨认，审核须拒绝“背景建筑设施全部沿用，只轻微翻新或变旧”的画面。情绪来自生活退出后，整个可见人工空间不再被需要和照料。
 
 结果保存在 `outputs/codex-time-echo/<批次>/时光对照.mp4`。批次保存选题、完整提示词、逐张审核及生成进度；中断后恢复原批次，成片后默认清理本轮工作素材，保留轻量预览和记录。内置生图工具本身的原始文件不会被删除。`codex-video.json` 可设置新批次的保留素材开关和次数上限：默认每张 3 次、每组 3 个选题、整轮 36 次调用；不会通过反复新建批次绕过上限。
 
@@ -72,4 +72,4 @@ python server.py --no-browser --output-dir outputs\batch-qa --port 18765
 
 通知使用 Telegram 官方 Bot API，不使用模型 API。成功回执去重，结果不确定时不自动重发；通知失败不会导致重新出片。技能需由正在运行的 Codex 调用，不是常驻监控，不能在电脑关机或 Codex 完全无法运行时保证提醒。机器人回复尚未接入遥控或自动恢复。
 
-时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、视频标注“内容为虚构剧情，仅供娱乐”。发布阶段执行固定脚本 `C:/Python313/python.exe publish_video.py --run <批次> --token <执行凭证>`：脚本通过 `打开视频号.bat` 启动独立 Edge，落到 `login.html` 时截取微信 OAuth iframe 中的二维码并通过 Telegram 发送，登录成功后自动上传、填表、登记提交意图并只点击一次“发表”。正常流程不依赖 Codex逐项操作网页。依赖使用 `C:/Python313/python.exe -m pip install -r requirements-publish.txt` 安装；`publish_video.py --probe` 只检查连接和页面，`--dry-run` 会上传填表但不点击“发表”。独立 `publish-progress.json` 记录登录、上传、提交、结果与通知交付进度；提交结果不明时脚本进入 `uncertain` 并禁止重复发表。登录页二维码和已登录发表页的控件结构均已实测，实际视频上传与发表未在只读校准中执行。详细流程见 `skills/time-echo-video/references/publishing.md`。
+时光对照技能出片后准备本轮 `publish-info.json` 和 `发布文案.txt`，发送通知与视频。发布设置沿用用户截图：不显示位置、合集“旧时光”、无链接、不参与活动、不定时、原创意图、视频标注“内容为虚构剧情，仅供娱乐”。发布入口为 `D:/AI创作生图项目/.venv-social/Scripts/python.exe D:/AI创作生图项目/social_upload_adapter.py --run <批次> --token <执行凭证>`，依赖安装见 [social-upload-install.md](social-upload-install.md)。脚本连接 `打开视频号.bat` 启动的持久 Edge，在同一页面完成登录、上传、填表与结果核验；需要登录时通过 Telegram 发送实际二维码，登录成功后自动续跑。脚本登记提交意图后只点击一次“发表”，缺少明确成功提示时进入同一窗口的作品列表核对，找到匹配作品才登记 published，否则保存 uncertain 并禁止重复提交。结束时只断开自动化连接，不关闭 Edge。独立 `publish-progress.json` 保存发布及交付进度。`social_upload_adapter.py --smoke` 只做离线版本与导入检查，`--dry-run` 会真实上传填表但不发表；离线验证不能证明平台实际发布成功。详细流程见 `skills/time-echo-video/references/publishing.md`。
