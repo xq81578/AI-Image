@@ -50,13 +50,15 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 
 外围策划沿用 `change_route` 与 `changes`，按 [creative-review.md](creative-review.md) 逐项交代主体及外围人工建筑设施的停用、弃置、失修、拆除或残迹；所有可见人工建筑设施一律退出使用，不保留继续居住、经营、正常维护、翻新或改作的例外。有可辨认的外围房屋、电线杆和其他设施时单列对应项目，不能用主体长草替代。仅自然地形稳定、远景细节不可辨或没有可见外围时如实说明，省略不存在的变化项；不为凑示例强行加建筑或工程。
 
+旧照必须按 [creative-review.md](creative-review.md) 分别完成纸内年代感与翻拍物理层次审核。忽略纸边、手指和年份后，纸内仍像当代高清照片时，`era=false`；只有相框和贴边手指、缺少真实纸面与纸外层次时，对应的 `realism` 或 `composition` 为 false；任一失败均令 `passed=false` 并定向返工。`observations` 必须分项记录两类实际证据，不能用不易看见的轻微噪点、边缘泛黄或提示词中的计划代替。沿用现有字段，本地脚本只检查结构，不能代替 Codex 真实看图。
+
 旧照审核 JSON（以下只是结构示例，不得未经看图直接套用通过）：
 
 ```json
 {
   "passed": true,
   "checks": {"realism": true, "era": true, "anatomy": true, "composition": true, "no_text": true, "rural": true, "lived_in": true},
-  "observations": "写当前图片实际可见的人物、相纸、场景结构与画质情况"
+  "observations": "纸内年代感：写忽略纸边后实际可见的细节损失和现场成像缺陷；翻拍物理层次：写实际手指遮挡、接触阴影、纸边与纸面受光；另记录生活运行证据与不足"
 }
 ```
 
