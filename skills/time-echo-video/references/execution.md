@@ -64,6 +64,8 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 
 今照在 checks 中使用 `rural`、`same_place`、`time_change`、`loss`、`abandonment`、`first_glance_contrast`、`long_term_neglect`、`object_change`、`viewpoint`、`season_match`，不使用 `lived_in`；并增加 `visible_changes` 字符串数组，以及 `loss_evidence`、`first_glance_evidence`、`long_term_neglect_evidence` 三个字符串。`visible_changes` 至少各有一项 `[功能]`、`[结构/维护]`、`[环境/设施/用途]`，用“旧照实际可见状态 → 今照实际可见状态”描述，并至少包含两项当天清场无法造成的持久变化。`loss_evidence` 说明失去的具体活动或关系及长期退出痕迹；`first_glance_evidence` 说明普通预览尺寸最先看到的主体反差；`long_term_neglect_evidence` 说明至少两项持久失管证据及其时间、材料和环境因果。计划中有而实际图片没有、看不清、只靠文案成立或与年份不匹配的内容不能作为证据。不通过项填 false，passed=false，写清返工原因；本地脚本只验证字段结构，语义真实性必须由 Codex 看图判断。
 
+今照成像审核沿用 `realism` 与 `observations`，不增加 JSON 字段。`observations` 单列“今照成像”，记录边缘与材质解析、阴影是否自然保留、亮部和植被色彩是否克制。过锐、全场景微纹理突出、暗部普遍拉亮、亮面或草木发光、颜色过艳时，`realism=false`、`passed=false`；不能凭荒废证据完整而放行，也不能靠全图模糊、压暗或冷灰滤镜补救。
+
 外围审核沿用 `time_change`、`abandonment`、`observations` 和 `visible_changes`，不增加 JSON 字段。`observations` 必须逐项记录外围人工建筑设施的弃用或拆除结果、稳定的自然地形及不可见范围，`visible_changes` 单列实际发生的外围变化；示例中的外围项仅在像素确有证据时填写。清楚可见的人工建筑设施仍正常使用、翻新、改作、仅轻微变旧或整片机械复制时，`time_change=false`、`abandonment=false`、`passed=false`；自然地形稳定或本就没有可见外围不因此失败。此语义门槛由 Codex 实际看图执行，本地字段校验不能代替。
 
 今照审核 JSON（以下只是结构示例，不得未经看图直接套用通过）：
@@ -88,7 +90,7 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
     "viewpoint": true,
     "season_match": true
   },
-  "observations": "写实际整体状态和不足；外围核对：逐项核实房屋、电线杆等人工设施的弃用或拆除结果、稳定的自然地形及不可见范围",
+  "observations": "今照成像：写实际锐度、亮暗分布和色彩及不足；外围核对：逐项核实房屋、电线杆等人工设施的弃用或拆除结果、稳定的自然地形及不可见范围",
   "visible_changes": [
     "[功能] 旧照实际状态 → 今照实际状态",
     "[结构/维护] 旧照实际状态 → 今照实际状态",
