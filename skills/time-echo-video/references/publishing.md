@@ -1,6 +1,6 @@
 # 视频号自动发布与交付
 
-本项目用户已明确要求：视频完成后，由固定脚本打开 Edge 视频号；需要登录时通过 Telegram 向本人发送实际登录二维码，等待网页确认登录成功，再按参考截图填写内容并点击“发表”。此授权适用于本技能每轮完成的视频，无需每轮再次询问是否发布。Codex 负责准备本轮视频与发布资料，`social_upload_adapter.py` 负责登录判断、二维码通知、上传、填表、提交和平台结果检查；正常发布不由 Codex逐项操作网页。
+本项目用户已明确要求：视频完成后，由固定脚本打开 Chrome 视频号；需要登录时通过 Telegram 向本人发送实际登录二维码，等待网页确认登录成功，再按参考截图填写内容并点击“发表”。此授权适用于本技能每轮完成的视频，无需每轮再次询问是否发布。Codex 负责准备本轮视频与发布资料，`social_upload_adapter.py` 负责登录判断、二维码通知、上传、填表、提交和平台结果检查；正常发布不由 Codex逐项操作网页。
 
 设置参考：[用户提供的发布页面截图](../assets/video-publish-settings.png)。按当前页面控件识别操作，不照搬截图坐标。浏览器工具或网站当次明确拒绝访问时，保留成片并记录实际阻塞；不绕过限制，也不把某次失败写成永久站点结论。
 
@@ -17,7 +17,7 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 发布进度以 `publish-progress.json` 为准，不手改状态。`publish-init` 保存文案、设置和视频哈希，相同资料重复执行返回原进度，不重置已提交状态；首次提交前为满足页面字数限制修改文案，可再次初始化并重新核对表单，曾经提交后禁止覆盖原资料。事件 JSON 至少含 `status` 与真实 `evidence`，可附页面地址、截图路径、二维码事件键等必要依据；不要保存 Cookie 或登录凭据。进度依次为 `awaiting_publish`、`prepared`、`waiting_login`（需要登录时）、`uploading`、`ready`、`submitting`、`published`、`delivered`（通知交付完成）；提交前的阻塞记为 `blocked`，提交结果不明记为 `uncertain`。
 
 - `done` 且发布未完成：直接恢复本节，不再生图、render 或清理素材。
-- `waiting_login`：找回本次 Edge 页面和二维码通知回执，继续等登录；同一码不重复发。
+- `waiting_login`：找回本次 Chrome 页面和二维码通知回执，继续等登录；同一码不重复发。
 - `uploading` 或 `ready`：重新读实际页面，确认文件和表单是否还在，不能仅按本地状态判断上传已完成。
 - `submitting` 或 `uncertain`：先查平台结果或作品列表，禁止直接再次点击发布。取得匹配本条视频的成功记录则登记 published；只有明确确认未提交成功时，才从 uncertain 用 `confirmed_not_submitted: true` 和实际证据重新登记 ready；若仍是 submitting，先登记 uncertain。列表暂时没出现不能证明未提交。
 - `published`：不再上传或发表，只补发尚未完成的通知。
@@ -54,10 +54,10 @@ python codex_video.py publish-step --run <批次> --token <执行凭证> --file 
 ## 固定脚本执行发布
 
 1. 按项目 `social-upload-install.md` 安装固定 SHA、补丁与独立 `.venv-social`。运行 `.venv-social/Scripts/python.exe social_upload_adapter.py --smoke` 只验证版本、补丁及真实腾讯模块导入，不联网、不启动浏览器、不发送通知。
-2. 运行 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`。脚本连接 `打开视频号.bat` 启动的持久 Edge，在同一个页面完成登录、上传和结果核验；登录态同时保存在 Edge 用户目录和工作区共享 `.social-upload-account/social-account.json`。脚本结束时只断开自动化连接，不主动关闭 Edge、页面或浏览器上下文；这些会话数据均不放入进度事件或提交 Git。
+2. 运行 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`。脚本连接 `打开视频号.bat` 启动的持久 Chrome，在同一个页面完成登录、上传和结果核验；登录态同时保存在 Chrome 用户目录和工作区共享 `.social-upload-account/social-account.json`。脚本结束时只断开自动化连接，不主动关闭 Chrome、页面或浏览器上下文；这些会话数据均不放入进度事件或提交 Git。
 3. 登录图片来自上游 qrcode_callback 的实际图片路径，经图片格式校验后以 Telegram document 子进程发送。持久 SHA256、事件键、sent/already_sent 回执用于同码去重；约每 60 秒刷新新码。适配器按 --login-timeout 设置登录轮询次数，每 3 秒检查一次，默认总等待上限为 900 秒。每次回调及退出均清理二维码文件。
 4. 上游负责真实上传；适配器在上游提交钩子内填写并验证简短描述、话题、无符号短标题、位置、合集、无链接、活动、定时、原创和视频标注。原创声明必须完成二次确认：勾选协议、等待确认按钮启用、点击“声明原创”并确认弹窗关闭。适配器还要确认页面没有标题错误且“发表”按钮未处于禁用状态；任一条件不成立都在提交前阻塞。
-5. 状态机先持久保存 ready 和 submitting，然后只授权一次 click。上游补丁禁止发表重试与 JavaScript 补点。没有明确平台成功提示时，脚本直接在同一页面进入作品列表，按完整文案、话题和最近30分钟发布时间核对；找到匹配作品才登记 published，找不到才进入 uncertain，并让 Edge 停留在列表页供人工核对。submitting/uncertain 再次执行仍禁止重复上传或点击发表。
+5. 状态机先持久保存 ready 和 submitting，然后只授权一次 click。上游补丁禁止发表重试与 JavaScript 补点。没有明确平台成功提示时，脚本直接在同一页面进入作品列表，按完整文案、话题和最近30分钟发布时间核对；找到匹配作品才登记 published，找不到才进入 uncertain，并让 Chrome 停留在列表页供人工核对。submitting/uncertain 再次执行仍禁止重复上传或点击发表。
 6. --dry-run 会真实上传填表，停在 ready；不是离线测试。离线测试使用 `python -m unittest discover -s tests -p 'test_*.py'`。发布后的 Telegram 结果通知仍按下节执行。
 
 ## 发布结果与交付

@@ -14,7 +14,7 @@ import types
 from urllib.parse import urlsplit
 
 from codex_video import ROOT, Workspace, PUBLISH_CHECKS, digest, validate_publish_copy
-from publish_video import (CDP_URL, PublicationState, PublishError, resolve_owner,
+from publish_video import (CDP_URL, CHROME_EXE, PublicationState, PublishError, resolve_owner,
                            notify_qr, cleanup_login_files, ensure_edge,
                            terminal_publication_result)
 
@@ -40,12 +40,11 @@ def load_tencent():
     for relative, expected in lock["patched_files"].items():
         if hashlib.sha256((UPSTREAM / relative).read_bytes().replace(b"\r\n", b"\n")).hexdigest() != expected:
             raise RuntimeError(f"Upstream patch mismatch: {relative}")
-    edge = Path("C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")
-    if not edge.is_file():
-        raise RuntimeError("Configured Edge executable missing")
+    if not CHROME_EXE.is_file():
+        raise RuntimeError("Configured Chrome executable missing")
     conf = types.ModuleType("conf")
     conf.BASE_DIR = UPSTREAM
-    conf.LOCAL_CHROME_PATH = str(edge)
+    conf.LOCAL_CHROME_PATH = str(CHROME_EXE)
     conf.LOCAL_CHROME_HEADLESS = False
     conf.DEBUG_MODE = False
     sys.modules["conf"] = conf
@@ -264,7 +263,7 @@ def account_path(state):
 
 
 class PersistentTencentSession:
-    """复用外部启动的同一个 Edge 完成登录、上传和结果核验。"""
+    """复用外部启动的同一个 Chrome 完成登录、上传和结果核验。"""
 
     def __init__(self, module, state, args):
         self.module = module
@@ -286,13 +285,13 @@ class PersistentTencentSession:
             self.context = self.page.context
         else:
             if not self.browser.contexts:
-                raise PublishError("EDGE_CONTEXT_MISSING", "持久 Edge 没有可用浏览器上下文")
+                raise PublishError("EDGE_CONTEXT_MISSING", "持久 Chrome 没有可用浏览器上下文")
             self.context = self.browser.contexts[0]
             self.page = await self.context.new_page()
         return self
 
     async def __aexit__(self, exc_type, exc, traceback):
-        # 只断开自动化连接；外部启动的 Edge、页面和上下文继续保留。
+        # 只断开自动化连接；外部启动的 Chrome、页面和上下文继续保留。
         if self.playwright is not None:
             await self.playwright.stop()
 
@@ -305,7 +304,7 @@ class PersistentTencentSession:
         if await self.module._is_tencent_login_completed(self.page):
             await self.context.storage_state(path=str(account_file))
             return {"success": True, "status": "cookie_valid",
-                    "message": "持久 Edge 登录态有效", "current_url": self.page.url}
+                    "message": "持久 Chrome 登录态有效", "current_url": self.page.url}
 
         await self.page.goto(self.module.TENCENT_LOGIN_URL, wait_until="domcontentloaded")
         qr_callback = QRCallback(self.state, account_file.parent)
@@ -388,11 +387,11 @@ async def publish(args, state, module=None, form_type=StrictForm,
         async with session_type(module, state, args) as session:
             result = await asyncio.wait_for(session.login(account_file), args.login_timeout)
             if not isinstance(result, dict) or result.get("success") is not True:
-                message = result.get("message", "登录失败") if isinstance(result, dict) else '持久 Edge 登录返回了非字典结果'
+                message = result.get("message", "登录失败") if isinstance(result, dict) else '持久 Chrome 登录返回了非字典结果'
                 raise PublishError("LOGIN_FAILED", str(message))
             state.verify_ownership()
             if state.progress()["status"] != "uploading":
-                state.step("uploading", "持久 Edge 已确认登录，开始同一窗口视频上传")
+                state.step("uploading", "持久 Chrome 已确认登录，开始同一窗口视频上传")
             uploader = module.TencentVideo(title=info["short_title"], file_path=info["video"],
                 tags=info["hashtags"], publish_date=0, account_file=str(account_file),
                 desc=info["description"], short_title=info["short_title"],
@@ -449,7 +448,7 @@ async def publish(args, state, module=None, form_type=StrictForm,
                     if reconcile_error is not None:
                         detail += f"；列表核验异常：{reconcile_error}"
                     state.step("uncertain", detail)
-                    raise PublishError("UNCERTAIN_SUBMISSION", "禁止自动重发，持久 Edge 已停留在作品列表供核对") from exc
+                    raise PublishError("UNCERTAIN_SUBMISSION", "禁止自动重发，持久 Chrome 已停留在作品列表供核对") from exc
                 raise
             finally:
                 await session.save_state(account_file)

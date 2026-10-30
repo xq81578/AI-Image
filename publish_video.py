@@ -1,4 +1,4 @@
-"""通过受控 Edge 将已完成的时光对照视频发布到视频号。"""
+"""通过受控 Chrome 将已完成的时光对照视频发布到视频号。"""
 
 from __future__ import annotations
 
@@ -21,7 +21,8 @@ from codex_video import PUBLISH_CHECKS, ROOT, Workspace, read_json, write_json
 POST_URL = "https://channels.weixin.qq.com/platform/post/create"
 CONTENT_PATH = "/micro/content/post/create"
 LOGIN_PATH = "/login.html"
-CDP_URL = "http://127.0.0.1:9223"
+CDP_URL = "http://127.0.0.1:9224"
+CHROME_EXE = Path("C:/Program Files/Google/Chrome/Application/chrome.exe")
 PYTHON = Path("C:/Python313/python.exe")
 LAUNCHER = ROOT / "打开视频号.bat"
 NOTIFIER = ROOT / "skills/telegram-notify/scripts/telegram_notify.py"
@@ -585,10 +586,12 @@ def wait_for_cdp(url=CDP_URL, timeout=15):
                     return
         except (OSError, ValueError):
             time.sleep(.5)
-    raise PublishError("EDGE_NOT_CONNECTED", "未能连接由打开视频号.bat启动的 Edge")
+    # 保留历史错误码，兼容已有调用方和发布进度处理。
+    raise PublishError("EDGE_NOT_CONNECTED", "未能连接由打开视频号.bat启动的 Chrome")
 
 
 def ensure_edge():
+    """兼容旧调用入口，实际启动或复用发布专用 Chrome。"""
     try:
         wait_for_cdp(timeout=1)
         return
