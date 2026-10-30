@@ -125,13 +125,14 @@ class CodexVideoTests(unittest.TestCase):
         self.assertEqual(accepted["status"], "accepted")
         self.assertIsNotNone(self.data["pairs"][0]["now"])
 
-    def test_requires_old_acceptance_and_serial_requests(self):
+    def test_requests_are_parallel_across_groups_but_serial_within_group(self):
         with self.assertRaisesRegex(ValueError, "旧照"):
             self.work.attempt(self.folder, self.data, 1, "now", "now")
         self.work.attempt(self.folder, self.data, 1, "old", "old")
         self.work.plan(self.folder, self.data, 2, self.plan)
-        with self.assertRaisesRegex(ValueError, "串行"):
-            self.work.attempt(self.folder, self.data, 2, "old", "old2")
+        self.work.attempt(self.folder, self.data, 2, "old", "old2")
+        with self.assertRaisesRegex(ValueError, "本组"):
+            self.work.attempt(self.folder, self.data, 1, "old", "old-again")
 
     def test_quality_failure_does_not_unlock_next_stage(self):
         attempt = self.work.attempt(self.folder, self.data, 1, "old", "old")
@@ -421,6 +422,233 @@ except ExecutionBusy:
             with patch.object(sys, "argv", ["codex_video.py", "begin"]):
                 with self.assertRaises(ExecutionBusy):
                     main()
+
+
+class DelegationTests(unittest.TestCase):
+    def setUp(self):
+        self.root = ROOT / "outputs" / "codex-time-echo" / ("test_delegate_" + uuid.uuid4().hex)
+        self.root.mkdir(parents=True)
+        self.addCleanup(shutil.rmtree, self.root)
+        config = dict(DEFAULTS, counts=[6], max_image_calls=36)
+        (self.root / "codex-video.json").write_text(json.dumps(config), encoding="utf-8")
+        self.work = Workspace(self.root)
+        with patch("codex_video.preflight", return_value=["music.mp3"]):
+            result = self.work.execute("begin", owner="coordinator")
+        self.run_id = result["run_id"]
+        self.parent_token = result["execution"]["token"]
+        self.folder, self.data = self.work.load(self.run_id)
+        self.source = self.root / "image.png"
+        Image.new("RGB", (800, 900), "#557766").save(self.source)
+        self.plan = {"title": "候车廊", "old_life": "等车回家", "loss": "停运后不再候车",
+                     "change_route": "改为库房", "caption": "再也等不到那辆车",
+                     "first_glance_contrast": "缩小对照仍能看出从正常候车变为长期失管",
+                     "long_term_neglect": "多年封闭造成渗水、锈蚀和植物侵入",
+                     "anchors": ["廊柱", "台阶"],
+                     "changes": ["[功能] 候车设施拆除后不再使用",
+                                 "[结构/维护] 窗口封堵并留下长期渗水痕迹",
+                                 "[环境/设施/用途] 排水沟淤积且植物侵入"]}
+        self.plan_file = self.root / "plan.json"
+        self.plan_file.write_text(json.dumps(self.plan, ensure_ascii=False), encoding="utf-8")
+        self.prompt_file = self.root / "prompt.txt"
+        self.prompt_file.write_text("完整测试提示词", encoding="utf-8")
+
+    def parent(self, action, **kwargs):
+        return self.work.execute(action, owner="coordinator", token=self.parent_token,
+                                 run_id=self.run_id, **kwargs)
+
+    def review(self, kind):
+        result = {"passed": True, "checks": {k: True for k in CHECKS[kind]},
+                  "observations": "实际查看后记录测试证据"}
+        if kind == "now":
+            result.update(visible_changes=["[功能] 拆牌留孔", "[结构/维护] 窗口封堵",
+                                          "[环境/设施/用途] 墙面翻修"],
+                          loss_evidence="候车活动消失",
+                          first_glance_evidence="缩小对照仍能看出候车功能退出",
+                          long_term_neglect_evidence="封闭窗口、渗水和沟渠淤积共同证明长期失管")
+        return result
+
+    def delegate_all(self):
+        for index in range(1, 7):
+            self.parent("plan", pair=index, file=self.plan_file)
+        grants = {}
+        for index in range(1, 7):
+            grants[index] = self.parent("delegate", pair=index, worker=f"worker-{index}",
+                                        agent=f"/root/worker_{index}")
+        return grants
+
+    def worker(self, index, grants, action="attempt", **kwargs):
+        grant = grants[index]
+        return self.work.execute(action, owner=f"worker-{index}", token=grant["token"],
+                                 run_id=self.run_id, pair=kwargs.pop("pair", index),
+                                 agent=f"/root/worker_{index}", **kwargs)
+
+    def test_six_groups_can_reserve_pending_attempts_with_unique_ids(self):
+        grants = self.delegate_all()
+        attempts = [self.worker(index, grants, file=self.prompt_file, kind="old")
+                    for index in range(1, 7)]
+        self.assertEqual([attempt["id"] for attempt in attempts], list(range(1, 7)))
+        folder, data = self.work.load(self.run_id)
+        self.assertEqual(data["image_calls"], 6)
+        self.assertEqual(sum(a["status"] == "pending" for p in data["pairs"] for a in p["attempts"]), 6)
+        self.assertEqual(sorted(a["id"] for p in data["pairs"] for a in p["attempts"]), list(range(1, 7)))
+        with self.assertRaisesRegex(ValueError, "本组"):
+            self.worker(1, grants, file=self.prompt_file, kind="old")
+
+    def test_delegate_mode_requires_every_incomplete_group_before_first_attempt(self):
+        for index in range(1, 7):
+            self.parent("plan", pair=index, file=self.plan_file)
+        self.parent("delegate", pair=1, worker="worker-1", agent="/root/worker_1")
+        grant = self.parent("delegate", pair=1, worker="worker-1", agent="/root/worker_1")
+        with self.assertRaisesRegex(ValueError, "缺少第"):
+            self.worker(1, {1: grant}, file=self.prompt_file, kind="old")
+
+    def test_now_still_depends_on_this_groups_accepted_old(self):
+        grants = self.delegate_all()
+        old = self.worker(1, grants, file=self.prompt_file, kind="old")
+        with self.assertRaisesRegex(ValueError, "旧照"):
+            self.worker(1, grants, file=self.prompt_file, kind="now")
+        self.worker(1, grants, action="fail", attempt=old["id"], reason="测试中断")
+        with self.assertRaisesRegex(ValueError, "旧照"):
+            self.worker(1, grants, file=self.prompt_file, kind="now")
+        old = self.worker(1, grants, file=self.prompt_file, kind="old")
+        self.worker(1, grants, action="record", attempt=old["id"], image=self.source,
+                    file=self._review_file("old"))
+        now = self.worker(1, grants, file=self.prompt_file, kind="now")
+        self.assertEqual(now["kind"], "now")
+
+    def _review_file(self, kind):
+        path = self.root / f"review-{kind}.json"
+        path.write_text(json.dumps(self.review(kind), ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def test_worker_is_limited_to_its_group_and_coordinator_keeps_global_rights(self):
+        grants = self.delegate_all()
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, pair=2, file=self.prompt_file, kind="old")
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, action="render")
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, action="release", reason="越权释放")
+        second = self.parent("delegate", pair=2, worker="worker-2", agent="/root/worker_2")
+        self.assertEqual(second["pair"], 2)
+
+    def test_reassigning_a_live_worker_requires_fresh_stop_proof(self):
+        grants = self.delegate_all()
+        with self.assertRaisesRegex(ValueError, "多个组"):
+            self.parent("delegate", pair=2, worker="worker-1", agent="/root/worker_1")
+        with self.assertRaises(ExecutionBusy):
+            self.parent("delegate", pair=1, worker="worker-replacement", agent="/root/replacement")
+        proof = {"thread_id": "worker-1", "observed_status": "interrupted",
+                 "source": "read_thread", "checked_at": datetime.now(timezone.utc).isoformat(),
+                 "evidence": "已确认原子智能体停止且无法继续"}
+        path = self.root / "worker-stop.json"
+        for changes in ({"thread_id": "worker-2"},
+                        {"checked_at": (datetime.now(timezone.utc) - timedelta(seconds=61)).isoformat()}):
+            path.write_text(json.dumps({**proof, **changes}), encoding="utf-8")
+            with self.subTest(changes=changes), self.assertRaises(ExecutionBusy):
+                self.parent("delegate", pair=1, worker="worker-replacement",
+                            agent="/root/replacement", file=path)
+        path.write_text(json.dumps(proof), encoding="utf-8")
+        replacement = self.parent("delegate", pair=1, worker="worker-replacement",
+                                  agent="/root/replacement", file=path)
+        self.assertNotEqual(replacement["token"], grants[1]["token"])
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, file=self.prompt_file, kind="old")
+
+    def test_global_image_budget_is_shared_by_all_workers(self):
+        grants = self.delegate_all()
+        _, data = self.work.load(self.run_id)
+        data["config"]["max_image_calls"] = 1
+        self.work.save(self.folder, data)
+        self.worker(1, grants, file=self.prompt_file, kind="old")
+        with self.assertRaisesRegex(ValueError, "上限"):
+            self.worker(2, grants, file=self.prompt_file, kind="old")
+
+    def _takeover_proof(self, workers=None, owner="coordinator", token=None, revision=None):
+        current = self.work.execution()
+        proof = {"owner_thread_id": owner, "token": token or current["token"],
+                 "revision": revision if revision is not None else current["revision"],
+                 "observed_status": "interrupted", "source": "wait_threads",
+                 "checked_at": datetime.now(timezone.utc).isoformat(),
+                 "evidence": "测试状态工具报告原任务已中断"}
+        if workers is not None:
+            proof["workers"] = workers
+        path = self.root / "takeover.json"
+        path.write_text(json.dumps(proof), encoding="utf-8")
+        return path
+
+    def _worker_proofs(self, status="interrupted"):
+        now = datetime.now(timezone.utc).isoformat()
+        return {f"worker-{index}": {"thread_id": f"worker-{index}", "observed_status": status,
+                                   "source": "list_agents", "checked_at": now,
+                                   "evidence": "已确认该子任务停止"} for index in range(1, 7)}
+
+    def test_takeover_requires_fresh_proof_for_each_worker_and_invalidates_old_tokens(self):
+        grants = self.delegate_all()
+        with self.assertRaises(ExecutionBusy):
+            self.work.execute("takeover", owner="thread-b", run_id=self.run_id,
+                              file=self._takeover_proof())
+        with self.assertRaises(ExecutionBusy):
+            self.work.execute("takeover", owner="thread-b", run_id=self.run_id,
+                              file=self._takeover_proof(self._worker_proofs(status="running")))
+        result = self.work.execute("takeover", owner="thread-b", run_id=self.run_id,
+                                   file=self._takeover_proof(self._worker_proofs()))
+        new_token = result["execution"]["token"]
+        self.assertNotEqual(new_token, self.parent_token)
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, file=self.prompt_file, kind="old")
+        self.parent_token = new_token
+        reassigned = self.work.execute("delegate", owner="thread-b", token=new_token,
+                                       run_id=self.run_id, pair=1, worker="worker-1",
+                                       agent="/root/worker_1")
+        self.assertNotEqual(reassigned["token"], grants[1]["token"])
+
+    def test_release_refuses_any_group_pending(self):
+        grants = self.delegate_all()
+        self.worker(1, grants, file=self.prompt_file, kind="old")
+        with self.assertRaisesRegex(ValueError, "未登记"):
+            self.parent("release", reason="仍有并行请求")
+
+    def test_six_processes_racing_same_batch_do_not_lose_image_call_count(self):
+        grants = self.delegate_all()
+        script = '''
+import json, sys, time
+from codex_video import Workspace, ExecutionBusy
+root, run_id, pair, owner, token, agent, prompt = sys.argv[1:]
+for _ in range(200):
+    try:
+        result = Workspace(root).execute("attempt", owner=owner, token=token,
+            run_id=run_id, pair=int(pair), kind="old", file=prompt, agent=agent)
+        print(json.dumps({"status": "ok", "id": result["id"]}))
+        break
+    except ExecutionBusy:
+        time.sleep(.01)
+else:
+    print(json.dumps({"status": "busy"}))
+'''
+        processes = []
+        try:
+            for index in range(1, 7):
+                grant = grants[index]
+                processes.append(subprocess.Popen(
+                    [sys.executable, "-c", script, str(self.root), self.run_id, str(index),
+                     f"worker-{index}", grant["token"], f"/root/worker_{index}", str(self.prompt_file)],
+                    cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)))
+            results = []
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=30)
+                self.assertEqual(process.returncode, 0, stderr.decode(errors="replace"))
+                results.append(json.loads(stdout))
+            self.assertTrue(all(result["status"] == "ok" for result in results), results)
+            _, data = self.work.load(self.run_id)
+            self.assertEqual(data["image_calls"], 6)
+            self.assertEqual(sorted(result["id"] for result in results), list(range(1, 7)))
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
 
 
 if __name__ == "__main__":

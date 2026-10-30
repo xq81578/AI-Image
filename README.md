@@ -2,17 +2,17 @@
 
 ## Codex 自动出片入口
 
-新增 `$time-echo-video` 技能：由 Codex 策划、调用内置生图、实际看图审核，不合格定向返工或自动换题，使用本机音乐与 FFmpeg 输出一条视频。这条流程不读取网页 API 配置、不调用北海等模型 API，不需要 API Key。
+新增 `$time-echo-video` 技能：由一个统筹 Codex 按技能策划全部组，再为每组创建一个制作子智能体并行完成内置生图、真实看图审核和返工，最后由统筹总验收并使用本机音乐与 FFmpeg 输出一条视频。这条流程不读取网页 API 配置、不调用北海等模型 API，不需要 API Key。
 
-在本项目的 Codex 任务中输入“使用 $time-echo-video 生成一条视频”即可运行。技能源码位于 [skills/time-echo-video/SKILL.md](skills/time-echo-video/SKILL.md)，本地助手为 `codex_video.py`。助手负责文件、进度、次数上限和视频合成，生图及主观质量判断由 Codex 完成；单独双击 Python 脚本不会启动智能体生图。
+在本项目的 Codex 任务中输入“使用 $time-echo-video 生成一条视频”即可运行。技能源码位于 [skills/time-echo-video/SKILL.md](skills/time-echo-video/SKILL.md)，并发规则见 [skills/time-echo-video/references/parallel.md](skills/time-echo-video/references/parallel.md)，本地助手为 `codex_video.py`。助手负责文件、进度、次数上限和视频合成，生图及主观质量判断由 Codex 完成；单独双击 Python 脚本不会启动智能体生图。
 
 每轮随机 5 或 6 组，成片 20 或 24 秒，旧照在上、今照在下、带年份、1080×1920、30fps，沿用 4 秒/组和 0.6 秒转场。今照主体及背景所有可见人工建筑和设施一律走停用、弃置、失修、拆除或原址残迹的方向，不保留继续居住、正常维护、翻新或改作的路线。以 2–4 个地点骨架或原址痕迹保持可辨认，审核须拒绝“背景建筑设施全部沿用，只轻微翻新或变旧”的画面。情绪来自生活退出后，整个可见人工空间不再被需要和照料。
 
 结果保存在 `outputs/codex-time-echo/<批次>/时光对照.mp4`。批次保存选题、完整提示词、逐张审核及生成进度；中断后恢复原批次，成片后默认清理本轮工作素材，保留轻量预览和记录。内置生图工具本身的原始文件不会被删除。`codex-video.json` 可设置新批次的保留素材开关和次数上限：默认每张 3 次、每组 3 个选题、整轮 36 次调用；不会通过反复新建批次绕过上限。
 
-制作任务以输出目录的 `execution.json` 记录整轮执行者和凭证，跨对话保留占用。A 执行时 B 启动会返回 `busy`，不能修改原批进度或另建批次；占用不按等待时长过期。A 正常结束或暂停后 `release`；异常中断未释放时，由 Codex 状态工具核实原任务已停止，再按 `skills/time-echo-video/references/execution.md` 接管。无法确认停止时保留占用。接管保留制作进度并使原执行凭证失效；后续修改命令必须带 `--token`。首次启用前需停止仍使用旧版脚本的执行任务。
+制作任务以输出目录的 `execution.json` 记录统筹占用，委派子智能体和独立凭证写在每批 `manifest.json` 的 `pairs[i].worker`，跨对话保留占用。每轮先保存全部 5 或 6 组 `plan`，再一次创建同等数量的制作子智能体；所有子智能体报告真实 ID 与 `image_gen` 可用前不开始生图。统筹通过 `delegate --run <批次> --pair N --worker <子真实CODEX_THREAD_ID> --agent <collaboration canonical name> --token <统筹凭证>` 为每组取得独立 token，再逐个发开工任务。组间可同时 pending，组内仍按旧照→今照串行；仍只有一批次和整轮 36 次总预算，不承诺按组数线性或六倍提速。宿主实际名额不足时保存阻塞并报告，不能静默降为少量 worker 排队。子智能体不执行 begin、接管、release、heartbeat、合成、通知或发布；统筹负责总体验收、合成、Telegram 和固定发布脚本。A 执行时 B 启动会返回 `busy`，不能修改原批进度或另建批次；占用不按等待时长过期。A 正常结束或暂停后 `release`；异常中断未释放时，由 Codex 状态工具核实统筹和所有已授权子智能体均已停止，再按 `skills/time-echo-video/references/execution.md` 接管。无法确认停止时保留占用。接管保留制作进度并使统筹及旧子凭证失效；有 pending 时先由新统筹对原 attempt 看图后以统筹 token `record`/`fail`，再重派无 pending 的组；后续修改命令必须带新 `--token`。首次启用前需停止仍使用旧版脚本的执行任务。
 
-时间与间隔由用户自行决定，当前不预设或启用定时任务。配置 Codex 定时任务时，在本机项目中使用 [定时任务提示词](skills/time-echo-video/schedule-prompt.md)，并确保已安装本技能。电脑需开机联网、Codex 可运行、内置生图工具与额度可用；首次定时运行仍需验证其工具可用性。限流和错误会保存断点并报告，不自动切换 API。一个项目只启用一个出片定时任务，避免多轮同时占用同一批素材。
+时间与间隔由用户自行决定，当前不预设或启用定时任务。配置 Codex 定时任务时，在本机项目中使用 [定时任务提示词](skills/time-echo-video/schedule-prompt.md)，并确保已安装本技能。电脑需开机联网、Codex 可运行、内置生图工具与额度可用；首次定时运行仍需验证其工具可用性。限流和错误会保存断点并报告，不自动切换 API。一个项目只启用一个出片定时任务，避免多轮同时占用同一批素材；恢复时先核实统筹和所有子智能体，父轮次中断不等于子已停止。
 
 新增验证：`python -m unittest discover -s tests -p test_codex_video.py -v`。完整项目验证命令见下方。
 

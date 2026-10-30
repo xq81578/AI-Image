@@ -47,6 +47,9 @@ PUBLISH_TRANSITIONS = {
     "published": {"delivered"},
     "delivered": set(),
 }
+WORKER_ACTIONS = {"plan", "attempt", "record", "fail", "replace"}
+WORKER_STOP_STATUSES = {"idle", "completed", "interrupted"}
+WORKER_STOP_SOURCES = {"read_thread", "wait_threads", "list_agents"}
 
 
 def validate_publish_copy(short_title, description):
@@ -213,6 +216,60 @@ class Workspace:
         self.save_execution(execution)
         return execution
 
+    @staticmethod
+    def _pending(pair):
+        return any(attempt["status"] == "pending" for attempt in pair["attempts"])
+
+    @staticmethod
+    def _worker_is_current(pair, execution):
+        worker = pair.get("worker")
+        return (isinstance(worker, dict) and worker.get("status") == "active"
+                and worker.get("parent_token") == execution.get("token"))
+
+    @staticmethod
+    def _worker_identity(worker):
+        return worker.get("thread_id")
+
+    def _validate_one_worker_stop_proof(self, checked, worker, execution):
+        if not isinstance(checked, dict):
+            raise ExecutionBusy(execution, "必须提供该子智能体已停止的 fresh proof")
+        identity = self._worker_identity(worker)
+        observed = checked.get("observed_status")
+        proof_identity = self._worker_identity(checked)
+        if (proof_identity != identity
+                or checked.get("token") is not None and checked.get("token") != worker.get("token")
+                or observed not in WORKER_STOP_STATUSES
+                or checked.get("source") not in WORKER_STOP_SOURCES
+                or not isinstance(checked.get("evidence"), str)
+                or not checked["evidence"].strip()):
+            raise ExecutionBusy(execution, "子智能体状态未知或仍在运行，禁止更换 worker")
+        try:
+            checked_at = datetime.fromisoformat(checked["checked_at"])
+            age = (datetime.now(timezone.utc) - checked_at).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("子智能体核验时间必须包含时区") from None
+        if not 0 <= age <= 60:
+            raise ExecutionBusy(execution, "子智能体状态核验已过期，必须重新核实")
+
+    def _validate_worker_stop_proofs(self, proof, data, execution):
+        """接管前逐个核验当前代仍有效子智能体已停止。"""
+        active = [pair["worker"] for pair in data["pairs"]
+                  if self._worker_is_current(pair, execution)]
+        if not active:
+            return
+        proofs = proof.get("workers")
+        if not isinstance(proofs, dict):
+            raise ExecutionBusy(execution, "接管前必须逐个核验仍有效子智能体已停止")
+        for worker in active:
+            identity = self._worker_identity(worker)
+            checked = proofs.get(str(identity))
+            try:
+                self._validate_one_worker_stop_proof(checked, worker, execution)
+            except ExecutionBusy as error:
+                if checked is None:
+                    raise ExecutionBusy(execution, "接管前必须逐个核验仍有效子智能体已停止") from None
+                raise ExecutionBusy(execution, "子智能体状态未知或仍在运行，禁止接管") from error
+
     def takeover(self, owner, run_id, proof):
         execution = self.execution()
         if not execution or execution["state"] != "held" or execution["run_id"] != run_id:
@@ -233,14 +290,97 @@ class Workspace:
         if not 0 <= age <= 60:
             raise ExecutionBusy(execution, "状态核验已过期，必须重新核实原执行者状态")
         folder, data = self.load(run_id)
+        self._validate_worker_stop_proofs(proof, data, execution)
+        # 父执行者换代后，当前代所有子智能体凭据立即失效；待处理请求仍由新父执行者处理。
+        revoked = False
+        for pair in data["pairs"]:
+            worker = pair.get("worker")
+            if self._worker_is_current(pair, execution):
+                worker.update(status="revoked", revoked_reason="parent_takeover",
+                              revoked_at=datetime.now(timezone.utc).isoformat())
+                revoked = True
+        if revoked:
+            self.save(folder, data)
         previous = {**execution, "stop_check": proof}
         # 只保留上一次占用，避免接管记录无限嵌套。
         previous.pop("previous_execution", None)
         claimed = self.claim(owner, run_id, previous)
         return {"resumed": True, "folder": str(folder), **data, "execution": claimed}
 
+    def _require_worker(self, execution, data, owner, token, run_id, pair_index=None,
+                        agent=None, attempt_id=None):
+        if (not execution or execution.get("state") != "held"
+                or execution.get("run_id") != run_id):
+            raise ExecutionBusy(execution, "子智能体凭据已失效；只允许当前批次的有效分组凭据")
+        if pair_index is None and attempt_id is not None:
+            try:
+                pair_index = self.find_attempt(data, attempt_id)[0]["index"]
+            except ValueError:
+                raise ExecutionBusy(execution, "无权操作其他组或已失效的子智能体凭据") from None
+        authorized = [candidate for candidate in data["pairs"]
+                      if self._worker_is_current(candidate, execution)
+                      and self._worker_identity(candidate["worker"]) == owner
+                      and candidate["worker"].get("token") == token]
+        if not authorized:
+            raise ExecutionBusy(execution, "无权操作其他组或已失效的子智能体凭据")
+        if pair_index is None:
+            raise ExecutionBusy(execution, "必须指定子智能体负责的组")
+        pair = self.pair(data, pair_index)
+        worker = pair.get("worker")
+        if (not self._worker_is_current(pair, execution)
+                or self._worker_identity(worker) != owner
+                or worker.get("token") != token
+                or (agent is not None and worker.get("agent") != agent)):
+            raise ExecutionBusy(execution, "无权操作其他组或已失效的子智能体凭据")
+        return pair
+
+    def delegate(self, folder, data, execution, index, worker, agent, stop_proof=None):
+        if not isinstance(worker, str) or not worker.strip():
+            raise ValueError("delegate 需要子智能体真实 CODEX_THREAD_ID")
+        if not isinstance(agent, str) or not agent.strip():
+            raise ValueError("delegate 需要子智能体 canonical agent name")
+        pair = self.pair(data, index)
+        existing = pair.get("worker")
+        for other in data["pairs"]:
+            other_worker = other.get("worker")
+            if (other["index"] != index and self._worker_is_current(other, execution)
+                    and self._worker_identity(other_worker) == worker):
+                raise ValueError("同一子智能体不能同时领取多个组")
+        if self._worker_is_current(pair, execution):
+            if (self._worker_identity(existing) == worker and existing.get("agent") == agent):
+                data["delegate_mode"] = True
+                self.save(folder, data)
+                return {"pair": index, "token": existing["token"], "worker": existing}
+            if self._pending(pair):
+                raise ValueError("本组当前代已有待处理请求，不能更换 worker")
+            self._validate_one_worker_stop_proof(stop_proof, existing, execution)
+            previous_worker = json.loads(json.dumps(existing))
+        else:
+            previous_worker = existing
+        if existing and self._pending(pair):
+            raise ValueError("本组仍有未登记结果，不能更换子智能体")
+        grant = {"thread_id": worker, "agent": agent, "token": uuid.uuid4().hex,
+                 "parent_token": execution["token"], "status": "active",
+                 "delegated_at": datetime.now(timezone.utc).isoformat()}
+        pair["worker"] = grant
+        data["delegate_mode"] = True
+        self.save(folder, data)
+        result = {"pair": index, "token": grant["token"], "worker": grant}
+        if previous_worker:
+            result["replaced_worker"] = previous_worker
+        return result
+
+    def _ensure_all_delegated(self, data, execution):
+        missing = [pair["index"] for pair in data["pairs"]
+                   if not (pair.get("old") and pair.get("now"))
+                   and not self._worker_is_current(pair, execution)]
+        if missing:
+            groups = ",".join(str(index) for index in missing)
+            raise ValueError(f"delegate 模式要求所有未完成组先分配子智能体；缺少第 {groups} 组")
+
     def execute(self, action, *, owner=None, token=None, run_id=None, pair=None,
-                kind=None, attempt=None, file=None, image=None, reason=None):
+                kind=None, attempt=None, file=None, image=None, reason=None,
+                worker=None, agent=None):
         """技能命令唯一入口：在同一文件锁内校验占用，再读写批次。"""
         with exclusive(self.output / ".lock"):
             if action == "history":
@@ -261,12 +401,40 @@ class Workspace:
                     folder, data = self.load(execution["run_id"])
                     self.save_execution(execution)
                     return {"resumed": True, "folder": str(folder), **data, "execution": execution}
+                if token is not None or worker is not None or agent is not None:
+                    raise ExecutionBusy(execution, "子智能体不得 begin；由统筹持有批次")
                 result = self.begin()
                 return {**result, "execution": self.claim(owner, result["run_id"])}
             if action == "takeover":
+                if run_id:
+                    current = self.execution()
+                    try:
+                        _, current_data = self.load(run_id)
+                    except (FileNotFoundError, json.JSONDecodeError):
+                        current_data = {"pairs": []}
+                    if any(self._worker_identity(p.get("worker") or {}) == owner
+                           for p in current_data.get("pairs", [])):
+                        raise ExecutionBusy(current, "子智能体不得 takeover；需由统筹核验并接管")
                 return self.takeover(owner, run_id, read_json(file))
-            execution = self.require_execution(owner, token, run_id)
             folder, data = self.load(run_id)
+            current_execution = self.execution()
+            parent_authorized = (current_execution and current_execution.get("state") == "held"
+                                 and current_execution.get("owner_thread_id") == owner
+                                 and current_execution.get("token") == token
+                                 and current_execution.get("run_id") == run_id)
+            if action == "delegate":
+                execution = self.require_execution(owner, token, run_id)
+                self.save_execution(execution)
+                stop_proof = read_json(file) if file else None
+                return self.delegate(folder, data, execution, pair, worker, agent, stop_proof)
+            if action in WORKER_ACTIONS and not parent_authorized:
+                execution = current_execution
+                self._require_worker(execution, data, owner, token, run_id,
+                                     pair_index=pair if action not in ("record", "fail") else None,
+                                     agent=agent,
+                                     attempt_id=attempt if action in ("record", "fail") else None)
+            else:
+                execution = self.require_execution(owner, token, run_id)
             if action == "release":
                 if any(a["status"] == "pending" for p in data["pairs"] for a in p["attempts"]):
                     raise ValueError("仍有未登记的生图请求；确认结果或中断并登记后才能释放")
@@ -276,7 +444,9 @@ class Workspace:
             # 开始操作就递增版本，失败的尝试也使先前的接管核验失效。
             self.save_execution(execution)
             if action == "plan": return self.plan(folder, data, pair, read_json(file))
-            if action == "attempt": return self.attempt(folder, data, pair, kind, Path(file).read_text(encoding="utf-8-sig"))
+            if action == "attempt":
+                return self.attempt(folder, data, pair, kind,
+                                    Path(file).read_text(encoding="utf-8-sig"), execution=execution)
             if action == "record": return self.record(folder, data, attempt, image, read_json(file))
             if action == "fail": return self.fail(folder, data, attempt, reason)
             if action == "replace": return self.replace(folder, data, pair, reason)
@@ -317,10 +487,10 @@ class Workspace:
         count = random.choice(self.config["counts"])
         pairs = [{"index": i + 1, "old_year": random.randint(2000, new_year - 10),
                   "new_year": new_year, "candidate": 1, "plan": None,
-                  "attempts": [], "old": None, "now": None} for i in range(count)]
+                  "attempts": [], "old": None, "now": None, "worker": None} for i in range(count)]
         data = {"run_id": run_id, "status": "working", "count": count,
                 "config": self.config, "bgm": random.choice(audio), "image_calls": 0,
-                "pairs": pairs, "events": [], "video": None}
+                "pairs": pairs, "events": [], "video": None, "delegate_mode": False}
         self.save(folder, data)
         write_json(active, {"run_id": run_id})
         return {"resumed": False, "folder": str(folder), **data}
@@ -361,7 +531,7 @@ class Workspace:
         self.save(folder, data)
         return pair
 
-    def attempt(self, folder, data, index, kind, prompt):
+    def attempt(self, folder, data, index, kind, prompt, execution=None):
         pair = self.pair(data, index)
         if data["status"] in ("done", "rendered"):
             raise ValueError("已成片批次不能继续生图")
@@ -376,11 +546,13 @@ class Workspace:
             raise ValueError("旧照尚未审核合格")
         if data["image_calls"] >= data["config"]["max_image_calls"]:
             raise ValueError("本轮已达到生图调用上限；保留进度并报告，不自动重置预算")
-        if any(a["status"] == "pending" for p in data["pairs"] for a in p["attempts"]):
-            raise ValueError("本轮仍有未登记结果的请求，请先恢复或标记失败；生图串行执行")
+        if data.get("delegate_mode"):
+            if execution is None:
+                raise ValueError("delegate 模式的生图请求必须通过 execute 携带有效凭据")
+            self._ensure_all_delegated(data, execution)
         attempts = [a for a in pair["attempts"] if a["kind"] == kind]
-        if any(a["status"] == "pending" for a in attempts):
-            raise ValueError("有未登记结果的请求，先恢复图片或用 fail 标记中断")
+        if self._pending(pair):
+            raise ValueError("本组仍有未登记结果的请求，先恢复图片或用 fail 标记中断")
         if len(attempts) >= data["config"]["attempts_per_image"]:
             raise ValueError("该图重做次数已用尽，请换选题")
         data["image_calls"] += 1
@@ -649,7 +821,7 @@ def make_preview(root, video, count, target):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block", "publish-status", "publish-init", "publish-step"])
+    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "delegate", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block", "publish-status", "publish-init", "publish-step"])
     parser.add_argument("--owner", help="仅在没有 CODEX_THREAD_ID 时指定真实任务 ID")
     parser.add_argument("--token", help="begin 或 takeover 返回的本轮执行凭证")
     parser.add_argument("--run")
@@ -659,8 +831,11 @@ def main():
     parser.add_argument("--file", type=Path)
     parser.add_argument("--image", type=Path)
     parser.add_argument("--reason")
+    parser.add_argument("--worker", help="delegate 的子智能体真实 CODEX_THREAD_ID")
+    parser.add_argument("--agent", help="delegate 或子智能体操作使用的 canonical agent name")
     args = parser.parse_args()
-    for action, names in {"plan": ["pair", "file"], "attempt": ["pair", "kind", "file"],
+    for action, names in {"delegate": ["run", "pair", "worker", "agent"],
+                          "plan": ["pair", "file"], "attempt": ["pair", "kind", "file"],
                           "record": ["attempt", "image", "file"], "fail": ["attempt", "reason"],
                           "replace": ["pair", "reason"], "finish": ["file"], "block": ["reason"],
                           "takeover": ["run", "file"], "release": ["run", "reason"],
@@ -673,7 +848,8 @@ def main():
         raise ValueError("--owner 与当前 Codex 任务不一致，不得冒用其他执行者身份")
     result = work.execute(args.action, owner=owner, token=args.token, run_id=args.run,
                           pair=args.pair, kind=args.kind, attempt=args.attempt,
-                          file=args.file, image=args.image, reason=args.reason)
+                          file=args.file, image=args.image, reason=args.reason,
+                          worker=args.worker, agent=args.agent)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

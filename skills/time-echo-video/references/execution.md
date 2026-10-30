@@ -1,6 +1,6 @@
 # 本地命令
 
-所有命令在 `D:/AI创作生图项目` 运行。PowerShell 示例中的 `<批次>`、`<编号>` 要换成真实返回值。文本和 JSON 文件使用 UTF-8，通过文件参数传入，避免 shell 引号破坏提示词。脚本只负责本地工作，调用生图与看图仍由 Codex 完成。`begin` 返回的 `execution.token` 是本轮执行凭证，以下 `<执行凭证>` 均使用这个值；不要使用其他任务的身份或凭证。
+所有命令在 `D:/AI创作生图项目` 运行。PowerShell 示例中的 `<批次>`、`<编号>` 要换成真实返回值。文本和 JSON 文件使用 UTF-8，通过文件参数传入，避免 shell 引号破坏提示词。脚本只负责本地工作，调用生图与看图仍由 Codex 完成。`begin` 返回的 `execution.token` 是统筹的本轮执行凭证；制作子智能体必须先由统筹 `delegate` 取得本组独立凭证，不能直接 `begin` 或使用统筹凭证。
 
 ```powershell
 python codex_video.py begin
@@ -8,6 +8,9 @@ python codex_video.py history
 python codex_video.py status --run <批次>
 python codex_video.py ownership
 python codex_video.py plan --run <批次> --pair 1 --file <选题JSON> --token <执行凭证>
+python codex_video.py delegate --run <批次> --pair 1 --worker <子真实CODEX_THREAD_ID> --agent <collaboration canonical name> --token <统筹凭证>
+# 原 worker 已确认停止且本组无 pending 时，重派需额外提供旧 worker 停止核验
+python codex_video.py delegate --run <批次> --pair 1 --worker <新子真实CODEX_THREAD_ID> --agent <新 canonical name> --file <旧worker停止核验JSON> --token <统筹凭证>
 python codex_video.py attempt --run <批次> --pair 1 --kind old --file <完整提示词TXT> --token <执行凭证>
 # 接着调用内置 image_gen，并实际查看工具生成的图片。
 python codex_video.py record --run <批次> --attempt <编号> --image <实际本地图片路径> --file <审核JSON> --token <执行凭证>
@@ -19,9 +22,33 @@ python codex_video.py render --run <批次> --token <执行凭证>
 python codex_video.py finish --run <批次> --file <成片审核JSON> --token <执行凭证>
 ```
 
-`begin`、`takeover`、`release` 与所有修改命令通过 `Workspace.execute` 在同一项目文件锁中执行；旧的 `Workspace` 制作方法是内部实现，不得绕过命令入口直接调用。
+`begin`、`takeover`、`release`、`delegate` 与所有修改命令通过 `Workspace.execute` 在同一项目文件锁中执行；旧的 `Workspace` 制作方法是内部实现，不得绕过命令入口直接调用。统筹凭证写在输出目录的 `execution.json`；每组 worker 委派写在该批次 `manifest.json` 的对应 `pairs[i].worker`，不是写进 `execution.json`。`delegate` 由统筹执行，要求本轮已保存全部计划、子智能体已报告真实 ID 和 `image_gen` 可用性；它登记 `run`、`pair`、worker ID、canonical agent name，并返回只属于该组的独立 token。统筹随后对该子智能体只发送一次开工 `followup_task`。
 
-`attempt` 在调用前计数并返回 id；失败也消耗一次，避免中断后无限调用。每次最多一个 pending，请求返回后及时登记。`record` 自动复制、标准化成 PNG 并保存哈希；后续审核通过的文件若被修改会拒绝合成。失败图保留到出片清理。
+`attempt` 在调用前计数并返回 id；失败也消耗一次，避免中断后无限调用。每个 `pair` 最多一个 pending，请求返回后及时登记；不同组可以同时 pending。`record` 自动复制、标准化成 PNG 并保存哈希；后续审核通过的文件若被修改会拒绝合成。失败图保留到出片清理。整轮默认最多 36 次调用，由批次统一计数，不是每个子智能体各自 36 次。
+
+## 组间并发命令
+
+统筹先按批次实际组数（5 或 6）完成全部 `plan`，再一次创建同等数量的制作子智能体。子智能体创建阶段只回报真实 `CODEX_THREAD_ID`、canonical agent name 和 `image_gen` 可用性；所有子智能体 `ready` 前不得调用生图。宿主实际名额不足时保存阻塞并报告可用名额，不把六组静默排成两组或三组等待。详细角色边界、目录隔离和容量门槛见 [组间并发制作](parallel.md)。
+
+`delegate` 成功后返回该组独立 token。子智能体只用自己的真实身份和本组 token 执行 `plan`（仅换题时保存替代计划）、`attempt`、`record`、`fail`、`replace`；同组仍按旧照 → 审核 → 今照 → 审核串行，不得在旧照未通过前请求今照。子智能体不得执行 `begin`、`takeover`、`release`、heartbeat、`render`、`finish`、通知或发布，也不把每一步制作回报给统筹。全部组完成后由统筹总体验收，再按编号 `render` 和继续现有交付流程。
+
+### 单 worker 替换
+
+子智能体无法 `followup_task` 但已由统筹用 `wait_threads` 或 `read_thread` 确认停止时，先检查该组是否有 `pending`。有 pending 时，统筹必须使用自己仍有效的统筹 token 找回实际工具结果，对原 `attempt` 看图后执行 `record` 或 `fail`；不能先更换 worker、不能新增 `attempt`、不能重复生图。只有本组无 pending 后，才创建替代子智能体，先让它只报告真实 ID、canonical name 和 `image_gen` 可用性，再用旧 worker 停止核验文件执行上方带 `--file` 的 `delegate`，取得新组 token 后发送一次开工指令。
+
+同一统筹代际的替换必须提供旧 worker 停止核验；`delegate` 会校验 `thread_id`、`observed_status`、`source`、带时区的 `checked_at`（不超过 60 秒）和非空 `evidence`，并拒绝仍有 pending 的组。成功接管后，旧统筹及其所有子 token 均已失效；接管核验已经覆盖旧 worker 停止，统筹为未完成组创建新 worker，待其 ready 后直接 `delegate` 取得新 token，再发送开工指令。新 worker 不得继承旧 token。
+
+单 worker 重派核验文件结构：
+
+```json
+{
+  "thread_id": "旧子智能体真实 CODEX_THREAD_ID",
+  "observed_status": "interrupted",
+  "source": "read_thread",
+  "checked_at": "2026-10-30T12:00:00+08:00",
+  "evidence": "实际状态显示旧子智能体已停止，且没有仍运行的工具"
+}
+```
 
 选题 JSON（以下只演示字段结构，不作为固定选题模板）：
 
@@ -120,15 +147,15 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 
 ## 执行权核验与接管
 
-整轮占用保存在输出目录的 `execution.json`，与对话历史分开。单次命令锁仍保护读写和编码；整轮占用覆盖思考、生图工具等待、审核和交付间隙，不按时间自动过期。`ownership`、`status`、`history` 是只读命令。占用冲突返回退出码 2 和 `status=busy`；本地命令锁正忙时 `execution` 可能为空，不能据此判断无人执行。
+统筹占用保存在输出目录的 `execution.json`，每组 worker 委派保存在该批次 `manifest.json` 的 `pairs[i].worker`，与对话历史分开。单次命令锁仍保护读写和编码；整轮占用覆盖统筹思考、子智能体生图工具等待、审核和交付间隙，不按时间自动过期。`ownership` 只返回统筹 execution，`status` 同时返回 manifest 中各组 worker。占用冲突返回退出码 2 和 `status=busy`；本地命令锁正忙时 `execution` 可能为空，不能据此判断无人执行。
 
 - 同一执行者继续本轮时可用 `begin --token <执行凭证>`，即使视频已完成也返回原批次；凭证遗失时只可从 `ownership` 取回与当前任务 ID 完全相符的凭证。
 - 正常结束、暂停或保存阻塞后，用 `release --run <批次> --token <执行凭证> --reason '已保存进度并结束本轮执行'`。释放不改图片、次数和制作状态。存在 pending 请求时释放会被拒绝，先处理真实结果。
 - A 已释放：B 直接 `begin`。制作或发布未完成的批次从原进度继续；发布和通知均完成（delivered）后创建下一批。升级前没有发布进度的历史 done 批次仍按已完成处理，不自动补发。
-- A 未释放：B 读取占用，再用 Codex `wait_threads`（`timeoutMs: 0`）查询 `owner_thread_id` 的当前状态；必要时用 `read_thread` 核实最新一轮和工具是否已结束。原任务仍运行、等待工具、状态未知、查询失败或工具不可用时，不接管，不因记录陈旧而判断已停止，也不主动打断原任务。
-- 只有最新状态明确显示原任务已空闲、完成或中断且没有仍运行的工具时，才准备下面的核验文件并执行 `takeover`。这是 Codex 对真实工具结果的核验记录，脚本不能独立查询任务状态；禁止根据时间、猜测或下方示例填写“已停止”。
+- A 未释放：B 读取占用，再用 Codex `wait_threads`（`timeoutMs: 0`）查询统筹 `owner_thread_id` 及所有已登记子智能体的当前状态；必要时用 `read_thread` 核实最新一轮和工具是否已结束。父统筹中断不等于子智能体已停止；任一已授权子仍运行、等待工具、状态未知、查询失败或工具不可用时，不接管，不因记录陈旧而判断已停止，也不主动打断原任务。
+- 只有最新状态明确显示统筹及所有已授权子智能体都已空闲、完成或中断且没有仍运行的工具时，才准备下面的核验文件并执行 `takeover`。这是 Codex 对真实工具结果的核验记录，脚本不能独立查询任务状态；禁止根据时间、猜测或下方示例填写“已停止”。
 
-核验文件保存在当前任务自己的临时目录，不能覆盖原批次文件。占用中的 `owner_thread_id`、`token`、`revision` 原样带入；`checked_at` 为实际核验时间（ISO 8601，含时区），`source` 为实际使用的 `wait_threads` 或 `read_thread`，`evidence` 摘录当前状态与工具已结束的依据。`observed_status` 仅允许 `idle`、`completed`、`interrupted`，必须对应实际结果。
+核验文件保存在当前任务自己的临时目录，不能覆盖原批次文件。外层占用中的 `owner_thread_id`、统筹 `token`、`revision` 原样带入；`checked_at` 为实际核验时间（ISO 8601，含时区），`source` 为实际使用的 `wait_threads` 或 `read_thread`，`evidence` 摘录统筹当前状态与工具已结束的依据。`observed_status` 仅允许 `idle`、`completed`、`interrupted`，必须对应实际结果。`workers` 必须按真实 worker thread ID 建索引，逐个提供当前代仍有效 worker 的停止核验。
 
 ```json
 {
@@ -138,7 +165,23 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
   "observed_status": "interrupted",
   "source": "wait_threads",
   "checked_at": "2026-09-12T12:00:00+00:00",
-  "evidence": "填写实际工具返回的当前任务状态及工具已结束依据；不能直接使用示例"
+  "evidence": "填写实际工具返回的统筹状态及工具已结束依据；不能直接使用示例",
+  "workers": {
+    "旧子智能体真实 CODEX_THREAD_ID-1": {
+      "thread_id": "旧子智能体真实 CODEX_THREAD_ID-1",
+      "observed_status": "interrupted",
+      "source": "wait_threads",
+      "checked_at": "2026-09-12T12:00:00+00:00",
+      "evidence": "填写该子智能体实际状态及工具已结束依据；不能直接使用示例"
+    },
+    "旧子智能体真实 CODEX_THREAD_ID-2": {
+      "thread_id": "旧子智能体真实 CODEX_THREAD_ID-2",
+      "observed_status": "completed",
+      "source": "read_thread",
+      "checked_at": "2026-09-12T12:00:00+00:00",
+      "evidence": "填写该子智能体实际完成状态及工具已结束依据；不能直接使用示例"
+    }
+  }
 }
 ```
 
@@ -147,6 +190,6 @@ python codex_video.py takeover --run <批次> --file <核验JSON>
 python codex_video.py release --run <批次> --token <执行凭证> --reason '已保存进度并结束本轮执行'
 ```
 
-核验超过 60 秒、原执行者再次 begin 或进行了修改操作，接管会被拒绝，须重新查询状态。成功后使用返回的新 `execution.token`；原凭证立即失效。接管保留原 manifest、pending 请求、图片、年份与预算，先找回未登记结果，再决定是否登记失败；不自动重发生图。旧任务后来恢复也必须重新检查占用，不得更改身份、改写 `execution.json` 或删除锁文件夺回执行权。
+核验超过 60 秒、原执行者再次 begin 或进行了修改操作，接管会被拒绝，须重新查询状态。成功后使用返回的新统筹 `execution.token`；原凭证及旧子凭证立即失效。接管保留原 manifest、`pairs[i].worker` 历史、pending 请求、图片、年份与预算。先由新统筹逐个找回旧 worker 未登记的实际结果，对原 attempt 看图后用新统筹 token 执行 `record` 或 `fail`，再为仍未完成且无 pending 的组重新创建、ready 和 delegate；不自动重发生图。旧任务后来恢复也必须重新检查占用，不得更改身份、改写 `execution.json` 或删除锁文件夺回执行权。若本地文件锁短暂 `busy` 且 `execution` 为空，只对完全相同的本地命令做有限重试，不重复 `attempt` 或生图；只有确认真实持有者冲突才停止。
 
 没有 `CODEX_THREAD_ID` 的环境必须用 `--owner <当前真实任务ID>`；环境已有身份时不能用此参数冒用另一个任务。升级前未建立占用记录的旧批次仍可由首次 `begin` 认领，启用前应确保旧版执行已停止；旧版本不具备这套凭证检查，不能与新版同时执行。
