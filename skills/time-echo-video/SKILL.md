@@ -1,6 +1,6 @@
 ---
 name: time-echo-video
-description: 在本机项目制作一条表现中国农村乡土生活从仍在运行到主体与背景人工建筑设施一律弃用、荒废或拆除的强反差时光对照竖屏视频，使用 Codex 内置生图和视觉审核，自动返工、换题并本地配乐成片，通过 Chrome 发布视频号；需登录时 Telegram 发二维码并等待扫码。用于手动出片、Codex 定时出片或恢复制作与发布进度，无需模型 API Key。
+description: 在本机项目制作一条表现中国农村乡土生活从仍在运行到主体与背景人工建筑设施一律弃用、荒废或拆除的强反差时光对照竖屏视频，使用 Codex 内置生图和视觉审核，自动返工、换题并本地配乐成片，由 Codex 使用默认浏览器全程发布视频号；需登录时 Telegram 发二维码并等待扫码。用于手动出片、Codex 定时出片或恢复制作与发布进度，无需模型 API Key。
 ---
 
 # 时光对照视频
@@ -9,7 +9,7 @@ description: 在本机项目制作一条表现中国农村乡土生活从仍在�
 
 本技能服务于 `D:/AI创作生图项目`，先以该目录为工作区，阅读项目 `AGENTS.md`。
 
-本技能的视频号发布唯一入口为第 7 步的固定 `social_upload_adapter.py` 命令，Chrome 启动、登录判断、网页操作与结果核验均由脚本负责。不得另用 `cua_repl` 等浏览器工具打开视频号、探测可访问性、检查登录、截图或手工发布，也不得以核验历史阻塞为由增加浏览器预检。遇到限制或指令冲突时先说明来源及正式入口是否已执行，不自行改道；未执行脚本不能报告为脚本失败。此约束仅针对本技能，详见 [发布入口约束](references/publishing.md#发布入口约束)。
+本技能的视频号发布由统筹 Codex 全权负责，手动和定时任务均使用用户指定的浏览器；未指定时复用默认浏览器（当前为 Ego Lite）及其登录状态。发布前加载 `ego-browser` 技能，由 Codex 完成登录判断、上传、填表、单次提交与平台结果核验，不再运行旧固定发布脚本。保留 `codex_video.py` 的执行权与发布状态记录，详见 [浏览器发布约定](references/publishing.md#浏览器发布约定)。
 
 用 `C:/Python313/python.exe codex_video.py` 执行下述本地命令；脚本不生成图片、不判断审美、不访问模型服务。
 由当前 Codex 统筹全部选题和最终验收；每个制作子智能体独立负责本组提示词、真实看图和返工决策。图片仅使用内置 `image_gen`；不使用北海、第三方或 OpenAI API/SDK，不需要 API Key，也不自动改用其他平台。
@@ -37,7 +37,7 @@ description: 在本机项目制作一条表现中国农村乡土生活从仍在�
 4. 所有子智能体 `ready` 后，统筹对每个未完成组执行一次 `delegate`，取得独立组凭证，再逐个 `followup_task` 发开工指令。统筹凭证不发给子智能体；子智能体只用自己的真实身份和本组凭证调用 `plan`（仅换题时保存新计划）、`attempt`、内置生图、看图、`record`、`fail`、`replace`。子智能体只写本组提示词、审核和素材，不执行 `begin`、`takeover`、`release`、heartbeat、`render`、`finish`、通知或发布，也不逐步回报制作细节。同组最多一个 pending，今照依赖本组合格旧照；不同组可同时 pending。具体委派接口、目录隔离和总预算见 [组间并发制作](references/parallel.md)。
 5. 每张都用视觉工具查看实际像素，填写审核 JSON，再以 `record` 复制图片并登记。旧照按 creative-review.md 分别检查“纸内年代感”和“翻拍物理层次”，在 `observations` 分项记录实际证据；纸内仍像当代高清照片或纸张只靠边框成立时必须返工。今照先在普通预览尺寸与旧照并看，再检查完整像素，单独核对随手拍成像并在 `observations` 记录真实材质、锐度、曝光与色彩；油画笔触、蜡质涂抹、不同材料呈现相似碎块纹理、过锐、暗部普遍提亮或草木鲜艳发光时，`realism=false`、`passed=false`，不能以变暗或变柔代替摄影质感通过；审核必须包含 `first_glance_contrast`、`long_term_neglect` 两项检查，以及非空的 `first_glance_evidence`、`long_term_neglect_evidence`。不能只根据工具成功、提示词、计划文字或图像尺寸判合格；`same_place` 和 `loss` 不能替代强反差与长期失管。今照若看起来只是人物器物撤走、刚清空、关门、整洁仓房或正常设备间，维护中断只藏在小角落，缺少三类变化中的任一类，持久变化少于两项，或叙事只存在于文案，必须判为不通过并定向返工。可搬陈设仍成套留在原位、仅加灰尘或腐朽时，`object_change=false`、`passed=false`。还须独立核对中远景与门窗外的房屋、院落和环境，在 `observations` 记录外围核对、在 `visible_changes` 记录实际外围变化；无可见外围、自然地形稳定或远景细节不可辨时如实说明。可见人工建筑设施仍在正常使用、翻新、改作，或只是轻微变旧而看不出弃用后果时，`time_change=false`、`abandonment=false`、`passed=false`，不能凭主体反差通过。审核未通过就针对具体区域重写提示词并再次 `attempt`，不是原提示词盲重试。
 6. 所有组通过后 `render`；查看输出视频提取的 `preview.jpg`，并抽查第一组、最后一组及转场附近的视频帧，检查年份、顺序、构图、转场和无黑屏。脚本已检查音轨存在、尺寸、时长和帧率；没听音乐不能声称听过。填写成片审核 JSON 后 `finish`。
-7. 按 [references/publishing.md](references/publishing.md) 准备并登记本轮发布资料，使用 `$telegram-notify` 发送成品，然后执行固定发布脚本 `D:/AI创作生图项目/.venv-social/Scripts/python.exe D:/AI创作生图项目/social_upload_adapter.py --run <批次> --token <执行凭证>`。该脚本连接 `打开视频号.bat` 启动的持久 Chrome，在同一页面完成登录、上传和结果核验；若跳到 `login.html`，脚本截取实际二维码并通过 Telegram 发给本人，等待网页登录成功后自动续跑；已登录时直接上传视频、填写固定设置、登记提交意图并只点击一次“发表”。脚本结束时只断开自动化连接，不主动关闭 Chrome。正常发布不再由 Codex逐项判断或操作网页。缺少明确成功提示时，脚本直接在同一窗口进入作品列表核对；找到匹配作品才登记 published，找不到才返回 `UNCERTAIN_SUBMISSION`，此时禁止再次运行提交。脚本返回 `PAGE_CHANGED`、`FORM_CONTROL_NOT_FOUND` 等阻塞状态时保留进度并报告，不自行改用其他浏览器。发布结论以平台证据为准，通知失败不重做视频或重复发布。完成时用简体中文给出视频链接、组数和时长。发布及通知均完成并登记 delivered，或保存阻塞并发出通知后，执行 `release --run <批次> --token <执行凭证> --reason <停止原因>` 释放占用；`finish`、`block` 本身不会释放。尚有未登记生图请求时先确认结果或实际中断，不能为释放而将仍在运行的请求标记失败。释放后按 [恢复守护](references/recovery.md) 停用本轮临时 heartbeat；若停用失败，报告其名称和状态，但不得因此重复发布。
+7. 按 [references/publishing.md](references/publishing.md) 准备并登记发布资料，使用 `$telegram-notify` 发送成品，再由统筹 Codex 在默认浏览器中完成发布。复用已登录页面，连续的已知操作合并执行，页面变化时只读取所需区域；发表前统一核对全部设置，先登记 ready、submitting，再只点击一次“发表”。依据平台明确成功提示或匹配作品登记 published，结果不明则登记 uncertain 并禁止重复提交。需要登录时发送实际二维码，按浏览器技能交还或恢复控制；无需每轮再次询问是否发布。完成时用简体中文给出视频链接、组数和时长。发布及通知均完成并登记 delivered，或保存阻塞并发出通知后，执行 `release --run <批次> --token <执行凭证> --reason <停止原因>` 释放占用；`finish`、`block` 本身不会释放。尚有未登记生图请求时先确认结果或实际中断，不能为释放而将仍在运行的请求标记失败。释放后按 [恢复守护](references/recovery.md) 停用本轮临时 heartbeat；若停用失败，报告其名称和状态，但不得因此重复发布。
 
 命令与文件结构见 [references/execution.md](references/execution.md)，选题及看图必读 [references/creative-review.md](references/creative-review.md)。
 

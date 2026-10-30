@@ -1,4 +1,6 @@
-# social-auto-upload 视频号安装与验证
+# social-auto-upload 视频号历史脚本安装与验证
+
+本文件仅保留旧发布器的维护说明。当前时光对照技能由 Codex 使用默认浏览器全程发布，不执行本文件中的安装、smoke 或发布命令，也不将旧脚本作为失败回退。当前流程见 [发布与交付](skills/time-echo-video/references/publishing.md)。
 
 上游仓库：https://github.com/dreammis/social-auto-upload
 
@@ -19,7 +21,7 @@ C:/Python313/python.exe -m venv .venv-social
 
 适配器核验 SHA、补丁文件的 SHA256 和 `patchright==1.62.3`；哈希按 LF 规范化，以兼容 Git 的 Windows 换行设置。固定浏览器路径为 `C:/Program Files/Google/Chrome/Application/chrome.exe`，不存在则明确失败。Chrome 使用独立用户目录 `%LOCALAPPDATA%/CodexVideoPublisher/ChromeProfile` 和调试端口 `9224`；首次切换可能需要重新扫码登录。适配器连接 `打开视频号.bat` 启动的持久 Chrome，复用同一个页面完成登录、上传和结果核验；仅在当前 Python 进程提供腾讯所需配置。没有下载其他浏览器、启动后台服务或安装定时任务。
 
-正式入口为 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`；非 Codex 环境还需 `--owner <真实任务ID>`。`--smoke` 无浏览器、无网络、无发送。`--dry-run` 会真实上传填表但不发表，不可当作离线验证。原 `publish_video.py` 保留状态机与二维码通知公共函数，新的入口不调用其 ChannelsPage 或旧发布执行流程。
+旧版脚本入口为 `.venv-social/Scripts/python.exe social_upload_adapter.py --run <批次> --token <执行凭证>`；非 Codex 环境还需 `--owner <真实任务ID>`。`--smoke` 无浏览器、无网络、无发送。`--dry-run` 会真实上传填表但不发表，不可当作离线验证。原 `publish_video.py` 保留状态机与二维码通知公共函数，新的入口不调用其 ChannelsPage 或旧发布执行流程。
 
 二维码回调读取上游真实图片，经 Pillow 格式校验后调用项目 Telegram CLI 的 document 模式；复用已有持久事件、哈希、回执去重。二维码与临时说明在回调结束或失败时清理；登录态同时保存在持久 Chrome 用户目录和被忽略的工作区共享文件 `.social-upload-account/social-account.json`，不写入版本库或事件。登录、上传和核验结束后只断开自动化连接，不关闭 Chrome、页面或浏览器上下文。
 
