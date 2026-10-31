@@ -2,8 +2,6 @@ __pycache__/
 /workspace-test-dir/
 /outputs/batch-qa/
 /.video-cache/
-/tools/
-/bgm/*
 /outputs/codex-time-echo/
 
 /social-auto-upload/

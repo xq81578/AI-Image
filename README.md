@@ -28,7 +28,7 @@
 
 “同时保存合图”默认关闭：只向所选目录保存 MP4；成功后删除本机临时图片以及浏览器内的原图、合图和图片预览缓存，保留轻量的年份、提示词、配文和成品路径。开启时会另外保存每组带年份的 PNG。失败或停止视频制作时暂留素材，便于直接重试视频；主动放弃并新建批次也会清理该批临时素材，已保存文件保留。
 
-将音乐放入项目 `bgm` 目录即可使用，支持 MP3、M4A、WAV、AAC、FLAC、OGG。每批开始时重新扫描并随机选一首，后续添加音乐会自动进入候选；本批重试保持原曲。音乐短了循环、长了截断。开始前检查视频环境、音乐和输出目录，避免生成图片后才发现视频无法制作。
+将音乐放入项目 `bgm` 目录即可使用，支持 MP3、M4A、WAV、AAC、FLAC、OGG。每批开始时重新扫描并随机选一首，后续添加音乐会自动进入候选；本批重试保持原曲。音乐短了循环、长了截断。开始前检查视频环境、音乐和输出目录，避免生成图片后才发现视频无法制作。新增音乐后，提交并推送 `bgm/` 的改动，另一台电脑拉取 `main` 后即可使用。
 
 - 旧年份从 2000 年开始随机，以十年以上跨度为主；新年份为运行当年或前一年。每组年份确定后，重试不会改变。
 - 旧照是手持纸质照片翻拍，彩照为主、少量黑白，做旧程度匹配保存年限；现在图引用旧照内部场景，直接呈现手机拍摄的现实画面。
@@ -45,7 +45,7 @@
 
 运行环境：Windows、`C:\Python313\pythonw.exe`（及同目录 `python.exe`）、Pillow、FFmpeg 和 FFprobe。当前机器已具备。启动器使用脚本所在目录，可处理中文路径。
 
-视频工具优先使用本项目 `tools/ffmpeg.exe` 和 `tools/ffprobe.exe`。当前为 9.0.1 essentials，来源为 FFmpeg 官网链接的 [Gyan.dev Windows builds](https://www.gyan.dev/ffmpeg/builds/)，下载 ZIP 的 SHA-256 已核对为 `fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9`。`tools/` 二进制、`bgm/` 音乐和 `.video-cache/` 临时素材不提交 Git；迁移项目时需另行带上工具和音乐。
+视频工具优先使用本项目 `tools/ffmpeg.exe` 和 `tools/ffprobe.exe`。当前为 9.0.1 essentials，来源为 FFmpeg 官网链接的 [Gyan.dev Windows builds](https://www.gyan.dev/ffmpeg/builds/)，下载 ZIP 的 SHA-256 已核对为 `fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9`。`tools/` 中的 FFmpeg、FFprobe 和 `bgm/` 音乐随 Git 同步，另一台电脑拉取 `main` 后即可取得这些文件。`.video-cache/` 临时素材和 `outputs/codex-time-echo/` 制作输出仍不提交 Git。
 
 开发验证：
 
