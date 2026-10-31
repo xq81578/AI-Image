@@ -449,6 +449,7 @@ class Workspace:
                                     Path(file).read_text(encoding="utf-8-sig"), execution=execution)
             if action == "record": return self.record(folder, data, attempt, image, read_json(file))
             if action == "fail": return self.fail(folder, data, attempt, reason)
+            if action == "reject": return self.reject(folder, data, pair, kind, read_json(file))
             if action == "replace": return self.replace(folder, data, pair, reason)
             if action == "render": return self.render(folder, data)
             if action == "finish": return self.finish(folder, data, read_json(file))
@@ -617,6 +618,34 @@ class Workspace:
         attempt.update(status="failed", reason=reason)
         self.save(folder, data)
         return attempt
+
+    def reject(self, folder, data, index, kind, review):
+        if data["status"] not in ("working", "blocked"):
+            raise ValueError("只能在合成前驳回图片")
+        pair = self.pair(data, index)
+        if kind not in CHECKS or not pair[kind]:
+            raise ValueError("该图片尚未审核合格，不能终审驳回")
+        if self._pending(pair):
+            raise ValueError("先处理本组尚未登记结果的请求")
+        if not isinstance(review, dict) or review.get("passed") is not False:
+            raise ValueError("终审驳回需要 passed=false 的审核")
+        checks = review.get("checks")
+        if not isinstance(checks, dict) or any(type(checks.get(k)) is not bool for k in CHECKS[kind]):
+            raise ValueError("终审驳回需要完整的布尔审核项")
+        if all(checks[k] for k in CHECKS[kind]):
+            raise ValueError("终审驳回至少需要一个未通过项")
+        if not isinstance(review.get("observations"), str) or not review["observations"].strip():
+            raise ValueError("终审驳回必须记录实际看图证据")
+        # 旧照改变后，基于它生成的今照也需重审；初审记录和次数不能重置。
+        kinds = ("old", "now") if kind == "old" else ("now",)
+        invalidated = {k: pair[k] for k in kinds if pair[k]}
+        data["events"].append({"event": "reject", "pair": index, "kind": kind,
+                               "review": review, "invalidated": json.loads(json.dumps(invalidated))})
+        for key in kinds:
+            pair[key] = None
+        self.save(folder, data)
+        return {"pair": index, "kind": kind, "invalidated": list(invalidated),
+                "image_calls": data["image_calls"]}
 
     def replace(self, folder, data, index, reason):
         pair = self.pair(data, index)
@@ -821,7 +850,7 @@ def make_preview(root, video, count, target):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "delegate", "plan", "attempt", "record", "fail", "replace", "render", "finish", "block", "publish-status", "publish-init", "publish-step"])
+    parser.add_argument("action", choices=["begin", "history", "status", "ownership", "takeover", "release", "delegate", "plan", "attempt", "record", "fail", "reject", "replace", "render", "finish", "block", "publish-status", "publish-init", "publish-step"])
     parser.add_argument("--owner", help="仅在没有 CODEX_THREAD_ID 时指定真实任务 ID")
     parser.add_argument("--token", help="begin 或 takeover 返回的本轮执行凭证")
     parser.add_argument("--run")
@@ -837,6 +866,7 @@ def main():
     for action, names in {"delegate": ["run", "pair", "worker", "agent"],
                           "plan": ["pair", "file"], "attempt": ["pair", "kind", "file"],
                           "record": ["attempt", "image", "file"], "fail": ["attempt", "reason"],
+                          "reject": ["run", "pair", "kind", "file"],
                           "replace": ["pair", "reason"], "finish": ["file"], "block": ["reason"],
                           "takeover": ["run", "file"], "release": ["run", "reason"],
                           "publish-init": ["run", "file"], "publish-step": ["run", "file"]}.items():

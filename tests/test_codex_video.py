@@ -169,6 +169,71 @@ class CodexVideoTests(unittest.TestCase):
         self.assertEqual(self.data["pairs"][0]["candidate"], 2)
         self.assertTrue(Path(old["old"]["path"]).exists())
 
+    def test_final_rejection_keeps_old_audit_files_and_attempt_budget(self):
+        self.accept("old")
+        self.accept("now")
+        original = copy.deepcopy(self.data["pairs"][0])
+        review = self.review("now")
+        review.update(passed=False, observations="统筹看图发现外围道路仍在使用")
+        review["checks"]["abandonment"] = False
+        result = self.work.reject(self.folder, self.data, 1, "now", review)
+        pair = self.data["pairs"][0]
+        self.assertEqual(result["invalidated"], ["now"])
+        self.assertEqual(pair["old"], original["old"])
+        self.assertIsNone(pair["now"])
+        self.assertEqual(pair["attempts"], original["attempts"])
+        self.assertEqual(self.data["image_calls"], 2)
+        self.assertEqual(self.data["events"][-1]["invalidated"], {"now": original["now"]})
+        self.assertEqual(self.data["events"][-1]["review"], review)
+        self.assertTrue(Path(original["now"]["path"]).is_file())
+        self.data["config"]["attempts_per_image"] = 1
+        with self.assertRaisesRegex(ValueError, "次数已用尽"):
+            self.work.attempt(self.folder, self.data, 1, "now", "不能重置预算")
+        self.data["config"]["attempts_per_image"] = 3
+        retry = self.work.attempt(self.folder, self.data, 1, "now", "定向修正道路")
+        self.assertEqual(retry["id"], 3)
+        self.assertEqual(retry["reference_sha256"], original["old"]["sha256"])
+
+    def test_reject_old_invalidates_dependent_now_without_resetting_history(self):
+        self.accept("old")
+        self.accept("now")
+        original = copy.deepcopy(self.data["pairs"][0])
+        review = self.review("old")
+        review["passed"] = False
+        review["checks"]["era"] = False
+        self.work.reject(self.folder, self.data, 1, "old", review)
+        pair = self.data["pairs"][0]
+        self.assertIsNone(pair["old"])
+        self.assertIsNone(pair["now"])
+        self.assertEqual(pair["attempts"], original["attempts"])
+        self.assertEqual(pair["plan"], original["plan"])
+        self.assertEqual(pair["candidate"], original["candidate"])
+        self.assertEqual(self.data["image_calls"], 2)
+        self.assertEqual(set(self.data["events"][-1]["invalidated"]), {"old", "now"})
+        with self.assertRaisesRegex(ValueError, "旧照"):
+            self.work.attempt(self.folder, self.data, 1, "now", "必须先重做旧照")
+
+    def test_final_rejection_requires_failed_evidence_and_no_pending_or_render(self):
+        self.accept("old")
+        review = self.review("old")
+        for invalid in (review, {**review, "passed": False},
+                        {**review, "passed": False, "checks": {"era": False}},
+                        {**review, "passed": False, "checks": {**review["checks"], "era": False},
+                         "observations": " "}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                self.work.reject(self.folder, self.data, 1, "old", invalid)
+        self.assertEqual(self.data["events"], [])
+        review["passed"] = False
+        review["checks"]["era"] = False
+        pending = self.work.attempt(self.folder, self.data, 1, "now", "正在生成")
+        with self.assertRaisesRegex(ValueError, "尚未登记"):
+            self.work.reject(self.folder, self.data, 1, "old", review)
+        self.work.fail(self.folder, self.data, pending["id"], "测试请求明确失败")
+        for status in ("rendering", "rendered", "finishing", "done"):
+            self.data["status"] = status
+            with self.subTest(status=status), self.assertRaisesRegex(ValueError, "合成前"):
+                self.work.reject(self.folder, self.data, 1, "old", review)
+
     def test_incomplete_or_modified_assets_cannot_render(self):
         self.accept("old")
         self.accept("now")
@@ -531,6 +596,24 @@ class DelegationTests(unittest.TestCase):
             self.worker(1, grants, action="release", reason="越权释放")
         second = self.parent("delegate", pair=2, worker="worker-2", agent="/root/worker_2")
         self.assertEqual(second["pair"], 2)
+
+    def test_only_coordinator_can_reject_and_worker_can_continue_same_group(self):
+        grants = self.delegate_all()
+        for kind in ("old", "now"):
+            attempt = self.worker(1, grants, file=self.prompt_file, kind=kind)
+            self.worker(1, grants, action="record", attempt=attempt["id"], image=self.source,
+                        file=self._review_file(kind))
+        review = self.review("now")
+        review["passed"] = False
+        review["checks"]["abandonment"] = False
+        path = self.root / "coordinator-rejection.json"
+        path.write_text(json.dumps(review, ensure_ascii=False), encoding="utf-8")
+        with self.assertRaises(ExecutionBusy):
+            self.worker(1, grants, action="reject", kind="now", file=path)
+        result = self.parent("reject", pair=1, kind="now", file=path)
+        self.assertEqual(result["invalidated"], ["now"])
+        retry = self.worker(1, grants, kind="now", file=self.prompt_file)
+        self.assertEqual(retry["id"], 3)
 
     def test_reassigning_a_live_worker_requires_fresh_stop_proof(self):
         grants = self.delegate_all()

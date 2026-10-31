@@ -16,6 +16,8 @@ python codex_video.py attempt --run <批次> --pair 1 --kind old --file <完整�
 python codex_video.py record --run <批次> --attempt <编号> --image <实际本地图片路径> --file <审核JSON> --token <执行凭证>
 # 审核 old 合格后，重复 attempt / image_gen / 看图 / record，kind 改为 now。
 python codex_video.py fail --run <批次> --attempt <编号> --reason '请求中断或真实错误' --token <执行凭证>
+# 仅统筹：终审发现已采纳图片不合格时，先用真实驳回审核撤回，再由原 worker 定向返工。
+python codex_video.py reject --run <批次> --pair 1 --kind now --file <终审驳回JSON> --token <统筹凭证>
 python codex_video.py replace --run <批次> --pair 1 --reason '多次修正后仍未达到时间变化要求' --token <执行凭证>
 python codex_video.py block --run <批次> --reason '明确阻塞原因' --token <执行凭证>
 python codex_video.py render --run <批次> --token <执行凭证>
@@ -25,6 +27,8 @@ python codex_video.py finish --run <批次> --file <成片审核JSON> --token <�
 `begin`、`takeover`、`release`、`delegate` 与所有修改命令通过 `Workspace.execute` 在同一项目文件锁中执行；旧的 `Workspace` 制作方法是内部实现，不得绕过命令入口直接调用。统筹凭证写在输出目录的 `execution.json`；每组 worker 委派写在该批次 `manifest.json` 的对应 `pairs[i].worker`，不是写进 `execution.json`。`delegate` 由统筹执行，要求本轮已保存全部计划、子智能体已报告真实 ID 和 `image_gen` 可用性；它登记 `run`、`pair`、worker ID、canonical agent name，并返回只属于该组的独立 token。统筹随后对该子智能体只发送一次开工 `followup_task`。
 
 `attempt` 在调用前计数并返回 id；失败也消耗一次，避免中断后无限调用。每个 `pair` 最多一个 pending，请求返回后及时登记；不同组可以同时 pending。`record` 自动复制、标准化成 PNG 并保存哈希；后续审核通过的文件若被修改会拒绝合成。失败图保留到出片清理。整轮默认最多 36 次调用，由批次统一计数，不是每个子智能体各自 36 次。
+
+`reject` 仅允许统筹在合成前执行，本组不能有 pending。审核 JSON 使用对应 old/now 的完整 `checks`，必须有至少一个 false、`passed=false` 和非空的实际看图 `observations`。命令在 `events` 保留终审证据和撤回的素材快照，不改写初审请求、原图、计划、年份、组凭证或生成次数。驳回 now 仅撤回今照；驳回 old 同时撤回依赖它的今照，原 worker 须先重新生成并审核旧照，再制作今照。原有单图与全轮次数限制继续生效；次数不足时仍按 `replace` 或阻塞流程处理，不能靠终审重置预算。已合成批次禁止此操作。
 
 ## 组间并发命令
 
